@@ -218,33 +218,3 @@ java.lang.OutOfMemoryError: Java heap space
 
 This does not invalidate the MiniPilot run. It is evidence that the current monolithic Version 1 implementation, which loads all cleaned datagrams before sorting and aggregation, does not scale to the 67 GB dataset under the available heap. Version 2 should address this with a more scalable processing strategy before adding concurrency or distributed architecture.
 
-## Git And Data Hygiene
-
-Do not commit input datasets. Do not commit generated result CSV/log files unless the instructor explicitly asks for them.
-
-`.gitignore` excludes:
-
-```text
-data/
-*.csv
-*.pdf
-results/*.csv
-results/*.log
-```
-
-`results/.gitkeep` is intentionally kept so the output directory exists in the repository.
-
-## Evidence For The Report
-
-Save:
-
-- Remote `java -version`, `./gradlew --version`, `./gradlew build`, and `./gradlew test` output.
-- Runtime metrics printed by the Java CLI.
-- First 10 output rows.
-- Output row count.
-- No `NaN`/`Infinity`/`null` validation result.
-- Active route validation result.
-- `results/route_month_speeds_minipilot.log`.
-- datagrams4Pilot heap failure log: `results/route_month_speeds_pilot.log`.
-
-See [docs/experiment-results.md](docs/experiment-results.md) for the summarized experiment evidence.
