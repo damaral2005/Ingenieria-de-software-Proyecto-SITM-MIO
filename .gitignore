@@ -1,0 +1,20 @@
+.gradle/
+build/
+out/
+*.class
+*.log
+
+# Local data snapshots must stay outside version control.
+data/
+*.csv
+*.pdf
+
+# Generated experiment outputs.
+results/*.csv
+results/*.log
+!results/.gitkeep
+
+# IDE files
+.idea/
+.vscode/
+*.iml

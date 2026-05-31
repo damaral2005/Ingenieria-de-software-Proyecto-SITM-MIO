@@ -1,0 +1,33 @@
+plugins {
+    id 'application'
+}
+
+group = 'edu.icesi.sitmmio'
+version = '0.1.0-SNAPSHOT'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+dependencies {
+    implementation 'org.apache.commons:commons-csv:1.14.1'
+    compileOnly 'com.github.spotbugs:spotbugs-annotations:4.9.8'
+
+    testImplementation platform('org.junit:junit-bom:5.13.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+application {
+    mainClass = 'edu.icesi.sitmmio.Main'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs.addAll(['-Xlint:all', '-Werror'])
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
