@@ -7,6 +7,7 @@ public final class CliOptions {
     public static final double DEFAULT_MAX_SPEED_KMH = 120.0;
     public static final boolean DEFAULT_DATAGRAMS_HAS_HEADER = true;
     public static final double DEFAULT_COORDINATE_SCALE = 1.0;
+    public static final int DEFAULT_THREAD_COUNT = Math.max(1, Runtime.getRuntime().availableProcessors());
 
     private final Path linesPath;
     private final Path datagramsPath;
@@ -26,6 +27,7 @@ public final class CliOptions {
     private final double coordinateScale;
     private final int maxGapMinutes;
     private final double maxSpeedKmh;
+    private final int threadCount;
 
     public CliOptions(
             Path linesPath,
@@ -58,7 +60,8 @@ public final class CliOptions {
                 null,
                 DEFAULT_COORDINATE_SCALE,
                 maxGapMinutes,
-                maxSpeedKmh);
+                maxSpeedKmh,
+                DEFAULT_THREAD_COUNT);
     }
 
     public CliOptions(
@@ -81,6 +84,49 @@ public final class CliOptions {
             int maxGapMinutes,
             double maxSpeedKmh
     ) {
+        this(
+                linesPath,
+                datagramsPath,
+                outputPath,
+                routeColumn,
+                busColumn,
+                timestampColumn,
+                latitudeColumn,
+                longitudeColumn,
+                activeRouteColumn,
+                datagramsHasHeader,
+                routeIndex,
+                busIndex,
+                timestampIndex,
+                latitudeIndex,
+                longitudeIndex,
+                coordinateScale,
+                maxGapMinutes,
+                maxSpeedKmh,
+                DEFAULT_THREAD_COUNT);
+    }
+
+    public CliOptions(
+            Path linesPath,
+            Path datagramsPath,
+            Path outputPath,
+            String routeColumn,
+            String busColumn,
+            String timestampColumn,
+            String latitudeColumn,
+            String longitudeColumn,
+            String activeRouteColumn,
+            boolean datagramsHasHeader,
+            Integer routeIndex,
+            Integer busIndex,
+            Integer timestampIndex,
+            Integer latitudeIndex,
+            Integer longitudeIndex,
+            double coordinateScale,
+            int maxGapMinutes,
+            double maxSpeedKmh,
+            int threadCount
+    ) {
         if (linesPath == null) {
             throw new IllegalArgumentException("Lines path is required.");
         }
@@ -99,6 +145,10 @@ public final class CliOptions {
         if (!Double.isFinite(coordinateScale) || coordinateScale <= 0.0) {
             throw new IllegalArgumentException("Coordinate scale must be greater than zero.");
         }
+        if (threadCount <= 0) {
+            throw new IllegalArgumentException("Thread count must be greater than zero.");
+        }
+
         this.linesPath = linesPath;
         this.datagramsPath = datagramsPath;
         this.outputPath = outputPath;
@@ -117,6 +167,7 @@ public final class CliOptions {
         this.coordinateScale = coordinateScale;
         this.maxGapMinutes = maxGapMinutes;
         this.maxSpeedKmh = maxSpeedKmh;
+        this.threadCount = threadCount;
     }
 
     public Path linesPath() {
@@ -189,5 +240,9 @@ public final class CliOptions {
 
     public double maxSpeedKmh() {
         return maxSpeedKmh;
+    }
+
+    public int threadCount() {
+        return threadCount;
     }
 }

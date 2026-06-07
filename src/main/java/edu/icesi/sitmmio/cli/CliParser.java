@@ -53,7 +53,8 @@ public final class CliParser {
                     parsePositiveInt(values.get("--max-gap-minutes"), CliOptions.DEFAULT_MAX_GAP_MINUTES,
                             "--max-gap-minutes"),
                     parsePositiveDouble(values.get("--max-speed-kmh"), CliOptions.DEFAULT_MAX_SPEED_KMH,
-                            "--max-speed-kmh")
+                            "--max-speed-kmh"),
+                    parsePositiveInt(values.get("--threads"), CliOptions.DEFAULT_THREAD_COUNT, "--threads")
             );
             return ParseResult.success(options);
         } catch (IllegalArgumentException exception) {
@@ -86,7 +87,9 @@ public final class CliParser {
                 + "Optional thresholds:\n"
                 + "  --max-gap-minutes <number>     Default: 10\n"
                 + "  --max-speed-kmh <number>       Default: 120\n\n"
-                + "Version 1 is monolithic: local files, single JVM, no concurrency, no distributed components.\n";
+                + "ThreadPool options:\n"
+                + "  --threads <number>             Default: available processors\n\n"
+                + "Version 2 uses Thread Pool and local Master-Worker: single JVM, multiple worker threads, no distributed components.\n";
     }
 
     private static boolean isKnownOption(String option) {
@@ -109,6 +112,7 @@ public final class CliParser {
             case "--coordinate-scale":
             case "--max-gap-minutes":
             case "--max-speed-kmh":
+            case "--threads":
                 return true;
             default:
                 return false;
