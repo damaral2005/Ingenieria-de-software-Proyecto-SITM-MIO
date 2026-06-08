@@ -1,0 +1,33 @@
+plugins {
+    id 'application'
+}
+
+group = 'edu.icesi.sitmmio'
+version = '1.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+dependencies {
+    implementation 'org.apache.commons:commons-csv:1.10.0'
+}
+
+application {
+    mainClass = 'edu.icesi.sitmmio.visualization.VisualizationApp'
+}
+
+repositories {
+    mavenCentral()
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'edu.icesi.sitmmio.visualization.VisualizationApp'
+    }
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
