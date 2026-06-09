@@ -8,6 +8,7 @@ public final class CliOptions {
     public static final boolean DEFAULT_DATAGRAMS_HAS_HEADER = true;
     public static final double DEFAULT_COORDINATE_SCALE = 1.0;
     public static final int DEFAULT_THREAD_COUNT = Math.max(1, Runtime.getRuntime().availableProcessors());
+    public static final int DEFAULT_WORKER_COUNT = DEFAULT_THREAD_COUNT;
 
     private final Path linesPath;
     private final Path datagramsPath;
@@ -28,6 +29,12 @@ public final class CliOptions {
     private final int maxGapMinutes;
     private final double maxSpeedKmh;
     private final int threadCount;
+    private final ExecutionMode executionMode;
+    private final int workerCount;
+    private final int partitionCount;
+    private final Path workDirectory;
+    private final Path partitionPath;
+    private final Path partialResultPath;
 
     public CliOptions(
             Path linesPath,
@@ -61,7 +68,13 @@ public final class CliOptions {
                 DEFAULT_COORDINATE_SCALE,
                 maxGapMinutes,
                 maxSpeedKmh,
-                DEFAULT_THREAD_COUNT);
+                DEFAULT_THREAD_COUNT,
+                ExecutionMode.THREAD_POOL,
+                DEFAULT_WORKER_COUNT,
+                DEFAULT_WORKER_COUNT,
+                null,
+                null,
+                null);
     }
 
     public CliOptions(
@@ -103,7 +116,13 @@ public final class CliOptions {
                 coordinateScale,
                 maxGapMinutes,
                 maxSpeedKmh,
-                DEFAULT_THREAD_COUNT);
+                DEFAULT_THREAD_COUNT,
+                ExecutionMode.THREAD_POOL,
+                DEFAULT_WORKER_COUNT,
+                DEFAULT_WORKER_COUNT,
+                null,
+                null,
+                null);
     }
 
     public CliOptions(
@@ -127,14 +146,76 @@ public final class CliOptions {
             double maxSpeedKmh,
             int threadCount
     ) {
-        if (linesPath == null) {
+        this(
+                linesPath,
+                datagramsPath,
+                outputPath,
+                routeColumn,
+                busColumn,
+                timestampColumn,
+                latitudeColumn,
+                longitudeColumn,
+                activeRouteColumn,
+                datagramsHasHeader,
+                routeIndex,
+                busIndex,
+                timestampIndex,
+                latitudeIndex,
+                longitudeIndex,
+                coordinateScale,
+                maxGapMinutes,
+                maxSpeedKmh,
+                threadCount,
+                ExecutionMode.THREAD_POOL,
+                DEFAULT_WORKER_COUNT,
+                DEFAULT_WORKER_COUNT,
+                null,
+                null,
+                null);
+    }
+
+    public CliOptions(
+            Path linesPath,
+            Path datagramsPath,
+            Path outputPath,
+            String routeColumn,
+            String busColumn,
+            String timestampColumn,
+            String latitudeColumn,
+            String longitudeColumn,
+            String activeRouteColumn,
+            boolean datagramsHasHeader,
+            Integer routeIndex,
+            Integer busIndex,
+            Integer timestampIndex,
+            Integer latitudeIndex,
+            Integer longitudeIndex,
+            double coordinateScale,
+            int maxGapMinutes,
+            double maxSpeedKmh,
+            int threadCount,
+            ExecutionMode executionMode,
+            int workerCount,
+            int partitionCount,
+            Path workDirectory,
+            Path partitionPath,
+            Path partialResultPath
+    ) {
+        ExecutionMode mode = executionMode == null ? ExecutionMode.THREAD_POOL : executionMode;
+        if (mode != ExecutionMode.DISTRIBUTED_WORKER && linesPath == null) {
             throw new IllegalArgumentException("Lines path is required.");
         }
-        if (datagramsPath == null) {
+        if (mode != ExecutionMode.DISTRIBUTED_WORKER && datagramsPath == null) {
             throw new IllegalArgumentException("Datagrams path is required.");
         }
-        if (outputPath == null) {
+        if (mode != ExecutionMode.DISTRIBUTED_WORKER && outputPath == null) {
             throw new IllegalArgumentException("Output path is required.");
+        }
+        if (mode == ExecutionMode.DISTRIBUTED_WORKER && partitionPath == null) {
+            throw new IllegalArgumentException("Partition path is required for distributed worker mode.");
+        }
+        if (mode == ExecutionMode.DISTRIBUTED_WORKER && partialResultPath == null) {
+            throw new IllegalArgumentException("Partial result path is required for distributed worker mode.");
         }
         if (maxGapMinutes <= 0) {
             throw new IllegalArgumentException("Max gap minutes must be greater than zero.");
@@ -147,6 +228,12 @@ public final class CliOptions {
         }
         if (threadCount <= 0) {
             throw new IllegalArgumentException("Thread count must be greater than zero.");
+        }
+        if (workerCount <= 0) {
+            throw new IllegalArgumentException("Worker count must be greater than zero.");
+        }
+        if (partitionCount <= 0) {
+            throw new IllegalArgumentException("Partition count must be greater than zero.");
         }
 
         this.linesPath = linesPath;
@@ -168,6 +255,12 @@ public final class CliOptions {
         this.maxGapMinutes = maxGapMinutes;
         this.maxSpeedKmh = maxSpeedKmh;
         this.threadCount = threadCount;
+        this.executionMode = mode;
+        this.workerCount = workerCount;
+        this.partitionCount = partitionCount;
+        this.workDirectory = workDirectory;
+        this.partitionPath = partitionPath;
+        this.partialResultPath = partialResultPath;
     }
 
     public Path linesPath() {
@@ -244,5 +337,29 @@ public final class CliOptions {
 
     public int threadCount() {
         return threadCount;
+    }
+
+    public ExecutionMode executionMode() {
+        return executionMode;
+    }
+
+    public int workerCount() {
+        return workerCount;
+    }
+
+    public int partitionCount() {
+        return partitionCount;
+    }
+
+    public Path workDirectory() {
+        return workDirectory;
+    }
+
+    public Path partitionPath() {
+        return partitionPath;
+    }
+
+    public Path partialResultPath() {
+        return partialResultPath;
     }
 }

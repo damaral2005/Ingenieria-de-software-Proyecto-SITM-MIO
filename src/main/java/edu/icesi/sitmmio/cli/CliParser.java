@@ -19,22 +19,32 @@ public final class CliParser {
             if (!isKnownOption(arg)) {
                 return ParseResult.error("Unknown option: " + arg);
             }
+            if (isKnownFlag(arg)) {
+                values.put(arg, "true");
+                continue;
+            }
             if (i + 1 >= args.length || args[i + 1].startsWith("--")) {
                 return ParseResult.error("Missing value for option: " + arg);
             }
             values.put(arg, args[++i]);
         }
 
-        String missing = firstMissingRequired(values);
+        ExecutionMode mode = resolveMode(values);
+        if (mode == null) {
+            return ParseResult.error("Only one execution mode can be selected.");
+        }
+
+        String missing = firstMissingRequired(values, mode);
         if (missing != null) {
             return ParseResult.error("Missing required option: " + missing);
         }
 
         try {
+            int workerCount = parsePositiveInt(values.get("--workers"), CliOptions.DEFAULT_WORKER_COUNT, "--workers");
             CliOptions options = new CliOptions(
-                    Path.of(values.get("--lines")),
-                    Path.of(values.get("--datagrams")),
-                    Path.of(values.get("--output")),
+                    pathOrNull(values.get("--lines")),
+                    pathOrNull(values.get("--datagrams")),
+                    pathOrNull(values.get("--output")),
                     values.get("--route-col"),
                     values.get("--bus-col"),
                     values.get("--timestamp-col"),
@@ -54,7 +64,13 @@ public final class CliParser {
                             "--max-gap-minutes"),
                     parsePositiveDouble(values.get("--max-speed-kmh"), CliOptions.DEFAULT_MAX_SPEED_KMH,
                             "--max-speed-kmh"),
-                    parsePositiveInt(values.get("--threads"), CliOptions.DEFAULT_THREAD_COUNT, "--threads")
+                    parsePositiveInt(values.get("--threads"), CliOptions.DEFAULT_THREAD_COUNT, "--threads"),
+                    mode,
+                    workerCount,
+                    parsePositiveInt(values.get("--partitions"), workerCount, "--partitions"),
+                    pathOrNull(values.get("--work-dir")),
+                    pathOrNull(values.get("--partition")),
+                    pathOrNull(values.get("--partial-output"))
             );
             return ParseResult.success(options);
         } catch (IllegalArgumentException exception) {
@@ -89,7 +105,15 @@ public final class CliParser {
                 + "  --max-speed-kmh <number>       Default: 120\n\n"
                 + "ThreadPool options:\n"
                 + "  --threads <number>             Default: available processors\n\n"
-                + "Version 2 uses Thread Pool and local Master-Worker: single JVM, multiple worker threads, no distributed components.\n";
+                + "Distributed modes:\n"
+                + "  --distributed-master           Run Version 3 master process\n"
+                + "  --distributed-worker           Run Version 3 worker process\n"
+                + "  --workers <number>             Worker JVM count for distributed master\n"
+                + "  --partitions <number>          Partition count for distributed master\n"
+                + "  --work-dir <path>              Distributed run work directory\n"
+                + "  --partition <path>             Worker input partition CSV\n"
+                + "  --partial-output <path>        Worker partial result CSV\n\n"
+                + "Default mode is Version 2 Thread Pool. Version 3 uses distributed Master-Worker with Producer-Consumer file work items.\n";
     }
 
     private static boolean isKnownOption(String option) {
@@ -113,13 +137,48 @@ public final class CliParser {
             case "--max-gap-minutes":
             case "--max-speed-kmh":
             case "--threads":
+            case "--distributed-master":
+            case "--distributed-worker":
+            case "--workers":
+            case "--partitions":
+            case "--work-dir":
+            case "--partition":
+            case "--partial-output":
                 return true;
             default:
                 return false;
         }
     }
 
-    private static String firstMissingRequired(Map<String, String> values) {
+    private static boolean isKnownFlag(String option) {
+        return "--distributed-master".equals(option) || "--distributed-worker".equals(option);
+    }
+
+    private static ExecutionMode resolveMode(Map<String, String> values) {
+        boolean distributedMaster = values.containsKey("--distributed-master");
+        boolean distributedWorker = values.containsKey("--distributed-worker");
+        if (distributedMaster && distributedWorker) {
+            return null;
+        }
+        if (distributedMaster) {
+            return ExecutionMode.DISTRIBUTED_MASTER;
+        }
+        if (distributedWorker) {
+            return ExecutionMode.DISTRIBUTED_WORKER;
+        }
+        return ExecutionMode.THREAD_POOL;
+    }
+
+    private static String firstMissingRequired(Map<String, String> values, ExecutionMode mode) {
+        if (mode == ExecutionMode.DISTRIBUTED_WORKER) {
+            if (!values.containsKey("--partition")) {
+                return "--partition";
+            }
+            if (!values.containsKey("--partial-output")) {
+                return "--partial-output";
+            }
+            return null;
+        }
         if (!values.containsKey("--lines")) {
             return "--lines";
         }
@@ -130,6 +189,10 @@ public final class CliParser {
             return "--output";
         }
         return null;
+    }
+
+    private static Path pathOrNull(String value) {
+        return value == null ? null : Path.of(value);
     }
 
     private static int parsePositiveInt(String value, int defaultValue, String optionName) {

@@ -23,6 +23,7 @@ final class CliParserTest {
         assertEquals(Path.of("lines.csv"), result.options().linesPath());
         assertEquals(Path.of("datagrams.csv"), result.options().datagramsPath());
         assertEquals(Path.of("results", "out.csv"), result.options().outputPath());
+        assertEquals(ExecutionMode.THREAD_POOL, result.options().executionMode());
         assertEquals(10, result.options().maxGapMinutes());
         assertEquals(120.0, result.options().maxSpeedKmh());
     }
@@ -66,6 +67,52 @@ final class CliParserTest {
         assertEquals(10_000_000.0, result.options().coordinateScale());
         assertEquals(15, result.options().maxGapMinutes());
         assertEquals(95.5, result.options().maxSpeedKmh());
+    }
+
+    @Test
+    void parsesDistributedMasterMode() {
+        ParseResult result = parser.parse(new String[]{
+                "--distributed-master",
+                "--lines", "lines.csv",
+                "--datagrams", "datagrams.csv",
+                "--output", "results/out.csv",
+                "--workers", "3",
+                "--partitions", "6",
+                "--work-dir", "build/distributed-test"
+        });
+
+        assertTrue(result.valid());
+        assertEquals(ExecutionMode.DISTRIBUTED_MASTER, result.options().executionMode());
+        assertEquals(3, result.options().workerCount());
+        assertEquals(6, result.options().partitionCount());
+        assertEquals(Path.of("build", "distributed-test"), result.options().workDirectory());
+    }
+
+    @Test
+    void parsesDistributedWorkerModeWithoutDatasetInputs() {
+        ParseResult result = parser.parse(new String[]{
+                "--distributed-worker",
+                "--partition", "partition.csv",
+                "--partial-output", "partial.csv"
+        });
+
+        assertTrue(result.valid());
+        assertEquals(ExecutionMode.DISTRIBUTED_WORKER, result.options().executionMode());
+        assertEquals(Path.of("partition.csv"), result.options().partitionPath());
+        assertEquals(Path.of("partial.csv"), result.options().partialResultPath());
+    }
+
+    @Test
+    void rejectsSelectingBothDistributedModes() {
+        ParseResult result = parser.parse(new String[]{
+                "--distributed-master",
+                "--distributed-worker",
+                "--partition", "partition.csv",
+                "--partial-output", "partial.csv"
+        });
+
+        assertFalse(result.valid());
+        assertEquals("Only one execution mode can be selected.", result.errorMessage());
     }
 
     @Test
