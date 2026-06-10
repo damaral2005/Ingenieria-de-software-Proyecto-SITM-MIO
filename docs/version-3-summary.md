@@ -208,6 +208,30 @@ A local smoke test was also run with synthetic data:
 - The master merged the partials.
 - The final CSV had the expected route/month rows.
 
+## MiniPilot Result
+
+Version 3 successfully processed `datagrams-MiniPilot.csv` on `104m03`.
+
+Summary:
+
+```text
+Raw datagrams: 8,145,462
+Cleaned datagrams: 7,896,735
+Skipped invalid datagrams: 248,727
+Valid segments: 7,494,051
+Workers: 4
+Partitions: 8
+Output rows: 111
+Output CSV: results/route_month_speeds_minipilot_v3.csv
+Total runtime: 30,814 ms
+```
+
+The MiniPilot run validates the complete Master-Worker flow on real data. Detailed analysis is documented in:
+
+```text
+docs/version-3-minipilot-experiment-analysis.md
+```
+
 ## Full Pilot Result
 
 Version 3 successfully processed `datagrams4Pilot.csv` on `104m05`.
@@ -233,7 +257,7 @@ docs/version-3-experiment-analysis.md
 
 ## Current Limitations
 
-- V2 and V3 output equivalence still needs to be recorded with real MiniPilot data.
+- V2 and V3 output equivalence still needs a formal file-by-file comparison recorded in the repository.
 - Deployment diagrams and QAW scenarios still need to be documented.
 - Worker failure handling is basic: missing or failed worker outputs stop the run.
 - Multi-PC scan worker mode requires manually copying data and partial result CSV files between PCs.

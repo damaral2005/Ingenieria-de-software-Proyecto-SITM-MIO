@@ -76,7 +76,7 @@ Keep tasks small enough for focused commits.
 - [ ] Run Version 2 MiniPilot baseline with 1 thread.
 - [ ] Run Version 2 MiniPilot baseline with multiple thread counts.
 - [ ] Run Version 3 MiniPilot with 1 worker.
-- [ ] Run Version 3 MiniPilot with multiple worker counts.
+- [x] Run Version 3 MiniPilot with multiple workers.
 - [ ] Compare Version 2 and Version 3 MiniPilot output files.
 - [x] Run Version 3 on datagrams4Pilot if environment allows.
 - [x] Record memory behavior and runtime.
@@ -91,6 +91,7 @@ Keep tasks small enough for focused commits.
 - [ ] Add CLI usage examples.
 - [ ] Add limitations and assumptions.
 - [x] Add multi-PC scan-worker runbook.
+- [x] Add Version 3 MiniPilot experiment analysis.
 - [x] Add Version 3 full pilot experiment analysis.
 
 ## Verification
@@ -103,7 +104,7 @@ Keep tasks small enough for focused commits.
 - [x] Version 3 worker tests pass.
 - [x] Version 3 merger tests pass.
 - [x] Version 3 scan-worker tests pass.
-- [ ] MiniPilot output equivalence is documented.
+- [ ] MiniPilot output equivalence with Version 2 is documented.
 
 ## Guardrails
 

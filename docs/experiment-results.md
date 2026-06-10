@@ -91,7 +91,71 @@ The MiniPilot run validates the Version 1 algorithm and CLI flow. The datagrams4
 
 Version 2 should address this with a more scalable processing strategy, such as memory-bounded streaming, chunking, external sorting, or another approach appropriate for the assignment. Concurrency and distributed architecture should still be introduced only when their corresponding versions require them.
 
-## Version 3 Distributed Master-Worker Result
+## Version 3 MiniPilot Distributed Master-Worker Result
+
+Environment:
+
+```text
+Server: swarch@10.147.17.103
+Host: 104m03
+Project path: ~/sitm-mio-v3
+Version: 3 distributed Master-Worker
+```
+
+Input:
+
+```text
+Active routes: /home/swarch/sitm-data/lines-241-ActiveGT.csv
+Datagrams: /home/swarch/sitm-data/datagrams-MiniPilot.csv
+Output: results/route_month_speeds_minipilot_v3.csv
+```
+
+Method:
+
+- Partition the MiniPilot CSV into 8 route/bus hash partitions.
+- Process the partitions with 4 worker JVMs.
+- Merge 8 partial result CSVs into the final deterministic output.
+
+Observed metrics:
+
+```text
+Active routes: 111
+Raw datagrams: 8,145,462
+Cleaned datagrams: 7,896,735
+Skipped invalid datagrams: 248,727
+Valid segments: 7,494,051
+Workers: 4
+Partitions: 8
+Partition runtime: 26,921 ms
+Worker runtime: 3,859 ms
+Merge runtime: 15 ms
+Total runtime: 30,814 ms
+Output rows: 111
+Output lines including header: 112
+```
+
+Worker partition metrics:
+
+```text
+Fastest partition runtime: 1,705 ms
+Slowest partition runtime: 1,969 ms
+Smallest partition input: 923,963 points
+Largest partition input: 1,138,993 points
+```
+
+Validation:
+
+- Final output had no `NaN`, `Infinity`, `-Infinity`, or `null` values.
+- The final output contained 111 data rows and one header row.
+- The run completed with `BUILD SUCCESSFUL in 31s`.
+
+Conclusion:
+
+Version 3 successfully processed `datagrams-MiniPilot.csv` with the full distributed Master-Worker workflow. For MiniPilot, partitioning dominated the runtime because the dataset is small enough that worker calculation is quick. This run is mainly a correctness and workflow validation baseline; the full pilot run is the stronger evidence for when distribution becomes necessary.
+
+Detailed analysis is available in `docs/version-3-minipilot-experiment-analysis.md`.
+
+## Version 3 Full Pilot Distributed Master-Worker Result
 
 Environment:
 
