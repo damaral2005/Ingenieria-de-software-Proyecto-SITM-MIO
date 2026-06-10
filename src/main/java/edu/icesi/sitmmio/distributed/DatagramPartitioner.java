@@ -177,8 +177,7 @@ public final class DatagramPartitioner {
     }
 
     private static int partitionId(GpsPoint point, int partitionCount) {
-        String key = point.routeId() + "\u0000" + point.busId();
-        return Math.floorMod(key.hashCode(), partitionCount);
+        return PartitionKey.partitionId(point.routeId(), point.busId(), partitionCount);
     }
 
     private static List<PartitionWorkItem> createWorkItems(

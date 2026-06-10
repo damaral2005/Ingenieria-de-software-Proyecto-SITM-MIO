@@ -90,3 +90,63 @@ The current monolithic implementation loads all cleaned datagrams into memory be
 The MiniPilot run validates the Version 1 algorithm and CLI flow. The datagrams4Pilot failure shows that the current monolithic, all-in-memory processing strategy is not enough for the larger dataset.
 
 Version 2 should address this with a more scalable processing strategy, such as memory-bounded streaming, chunking, external sorting, or another approach appropriate for the assignment. Concurrency and distributed architecture should still be introduced only when their corresponding versions require them.
+
+## Version 3 Distributed Master-Worker Result
+
+Environment:
+
+```text
+Server: swarch@10.147.17.105
+Host: 104m05
+Project path: ~/sitm-mio-v3
+Version: 3 distributed Master-Worker
+```
+
+Input:
+
+```text
+Active routes: /home/swarch/sitm-data/lines-241-ActiveGT.csv
+Datagrams: /home/swarch/sitm-data/datagrams4Pilot.csv
+Output: results/route_month_speeds_pilot_v3.csv
+```
+
+Method:
+
+- Partition the full CSV once into 64 route/bus hash partitions.
+- Process each partition with a worker JVM.
+- Merge 64 partial result CSVs into the final deterministic output.
+
+Observed metrics:
+
+```text
+Active routes: 111
+Raw datagrams: 806,400,773
+Cleaned datagrams: 782,565,720
+Skipped invalid datagrams: 23,835,053
+Partition count: 64
+Partition runtime: 3,180,938 ms
+Worker partial files: 64
+Worker min runtime: 14,545 ms
+Worker max runtime: 23,190 ms
+Worker average runtime: 19,133.7 ms
+Total worker runtime: 1,224,559 ms
+Valid segments: 736,951,733
+Partial rows: 56,180
+Output rows: 1,443
+Output lines including header: 1,444
+Merge runtime: 170 ms
+Estimated total runtime: 4,405,667 ms
+Estimated total runtime: about 73.43 minutes
+```
+
+Validation:
+
+- Final output had no `NaN`, `Infinity`, `-Infinity`, or `null` values.
+- The final output contained 1,443 data rows and one header row.
+- Partial result merge completed successfully from 64 worker outputs.
+
+Conclusion:
+
+Version 3 successfully processed the full `datagrams4Pilot.csv` dataset that failed under the monolithic all-in-memory strategy. The distributed Master-Worker design made the workload memory-bounded by partitioning datagrams by `routeId + busId`, processing each partition independently, and merging compact partial route/month aggregates.
+
+Detailed analysis is available in `docs/version-3-experiment-analysis.md`.

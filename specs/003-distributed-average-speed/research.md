@@ -2,84 +2,27 @@
 
 ## Research Goals
 
-Decide how to evolve Version 2 into a distributed solution using only patterns discussed in class:
+Decide how to evolve Version 2 into a distributed solution using one distributed pattern discussed in class.
 
-- Sender Released
-- Producer-Consumer
-- Fork / Join
-- Separable Dependencies
-- Master-Worker
+## Pattern Decision
 
-## Pattern Evaluation
+### Selected Pattern: Master-Worker
 
-### Master-Worker
+Decision:
 
-Fit: High.
+Use Distributed Master-Worker as the only Version 3 distribution pattern.
 
 Reason:
 
 - Version 2 already uses a local Master-Worker shape through `ThreadPoolSpeedCalculator` and `RouteProcessingTask`.
-- Version 3 can distribute the same idea across multiple JVM worker processes.
-- The pattern is easy to explain for the assignment deliverable.
+- Version 3 distributes the same idea across multiple JVM worker processes.
+- The master divides work, coordinates execution, receives partial results, and merges the final CSV.
+- Workers execute isolated computation over assigned partitions.
+- The pattern is easy to explain and matches the assignment requirement for a distributed design pattern.
 
-Decision:
+## Implementation Note
 
-Use Master-Worker as the primary Version 3 pattern.
-
-### Producer-Consumer
-
-Fit: High as a supporting pattern.
-
-Reason:
-
-- The datagram reader/partitioner can produce work items.
-- Workers can consume work items.
-- This decouples input partitioning from worker execution.
-- It provides a clean explanation for task queues or filesystem manifests.
-
-Decision:
-
-Use Producer-Consumer for the work item flow.
-
-### Separable Dependencies
-
-Fit: High as an internal design rule.
-
-Reason:
-
-- Domain calculators already exist and should not depend on distributed runtime details.
-- Keeping calculation independent reduces risk and keeps Version 3 comparable with Version 2.
-
-Decision:
-
-Use Separable Dependencies to define boundaries between domain logic and distributed infrastructure.
-
-### Fork / Join
-
-Fit: Medium.
-
-Reason:
-
-- The calculation splits work and joins partial results.
-- However, the current problem is not naturally recursive.
-- Master-Worker communicates the distributed deployment more clearly.
-
-Decision:
-
-Mention as related, but do not use it as the primary Version 3 pattern.
-
-### Sender Released
-
-Fit: Low to medium.
-
-Reason:
-
-- The master may dispatch tasks and continue coordinating without blocking per task.
-- However, this is less central than Master-Worker and Producer-Consumer.
-
-Decision:
-
-Do not use it as a main Version 3 pattern unless later worker messaging requires it.
+The implementation uses files such as partition CSVs, `manifest.csv`, and partial result CSVs, but these are treated as Master-Worker implementation details rather than as separate patterns.
 
 ## Current Version 2 Findings
 
@@ -145,7 +88,7 @@ Prefer `routeId + busId` partitioning for Version 3. Keep route-only as fallback
 
 ## Coordination Research
 
-### Filesystem manifest
+### Filesystem manifest and partition files
 
 Advantages:
 
@@ -156,12 +99,12 @@ Advantages:
 
 Risks:
 
-- Less robust than a real queue.
+- Less robust than a broker-based implementation.
 - Requires careful run directory cleanup or unique run ids.
 
 Decision:
 
-Use filesystem manifests and result files for the first Version 3 implementation.
+Use filesystem manifests, partition files, and result files as implementation details of the distributed Master-Worker pattern.
 
 ### Sockets or REST
 

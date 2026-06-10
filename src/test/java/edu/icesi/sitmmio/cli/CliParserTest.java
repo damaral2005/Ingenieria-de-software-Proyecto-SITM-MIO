@@ -89,6 +89,22 @@ final class CliParserTest {
     }
 
     @Test
+    void parsesDistributedPartitionMode() {
+        ParseResult result = parser.parse(new String[]{
+                "--distributed-partition",
+                "--lines", "lines.csv",
+                "--datagrams", "datagrams.csv",
+                "--work-dir", "work",
+                "--partitions", "16"
+        });
+
+        assertTrue(result.valid());
+        assertEquals(ExecutionMode.DISTRIBUTED_PARTITION, result.options().executionMode());
+        assertEquals(Path.of("work"), result.options().workDirectory());
+        assertEquals(16, result.options().partitionCount());
+    }
+
+    @Test
     void parsesDistributedWorkerModeWithoutDatasetInputs() {
         ParseResult result = parser.parse(new String[]{
                 "--distributed-worker",
@@ -113,6 +129,41 @@ final class CliParserTest {
 
         assertFalse(result.valid());
         assertEquals("Only one execution mode can be selected.", result.errorMessage());
+    }
+
+    @Test
+    void parsesDistributedScanWorkerMode() {
+        ParseResult result = parser.parse(new String[]{
+                "--distributed-scan-worker",
+                "--lines", "lines.csv",
+                "--datagrams", "datagrams.csv",
+                "--partial-output", "partial.csv",
+                "--partition-id", "2",
+                "--partitions", "8"
+        });
+
+        assertTrue(result.valid());
+        assertEquals(ExecutionMode.DISTRIBUTED_SCAN_WORKER, result.options().executionMode());
+        assertEquals(Path.of("lines.csv"), result.options().linesPath());
+        assertEquals(Path.of("datagrams.csv"), result.options().datagramsPath());
+        assertEquals(Path.of("partial.csv"), result.options().partialResultPath());
+        assertEquals(2, result.options().partitionId());
+        assertEquals(8, result.options().partitionCount());
+    }
+
+    @Test
+    void parsesDistributedMergeMode() {
+        ParseResult result = parser.parse(new String[]{
+                "--distributed-merge",
+                "--lines", "lines.csv",
+                "--partial-results-dir", "partials",
+                "--output", "results/out.csv"
+        });
+
+        assertTrue(result.valid());
+        assertEquals(ExecutionMode.DISTRIBUTED_MERGE, result.options().executionMode());
+        assertEquals(Path.of("partials"), result.options().partialResultsDirectory());
+        assertEquals(Path.of("results", "out.csv"), result.options().outputPath());
     }
 
     @Test

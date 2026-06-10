@@ -8,9 +8,9 @@ Build Version 3 as an incremental extension of Version 2. Keep the calculation c
 
 Use:
 
-- Master-Worker as the main distributed pattern.
-- Producer-Consumer for work item creation and consumption.
-- Separable Dependencies to keep domain logic independent from distribution mechanics.
+- Distributed Master-Worker as the only Version 3 distribution pattern.
+- File manifests, partition files, and partial result files as implementation details of Master-Worker.
+- Domain logic separated from distribution mechanics as code organization, not as an additional architecture pattern.
 
 The Version 2 `ThreadPoolSpeedCalculator` already behaves as a local Master-Worker. Version 3 should preserve that mental model while replacing local `Callable` tasks with external worker process tasks.
 
@@ -146,7 +146,7 @@ Important: `buses_observed` is not safely mergeable by summing if the same bus c
 ### Phase 1: Distributed Spec Baseline
 
 - Create Version 3 spec files.
-- Document selected patterns.
+- Document selected distributed pattern.
 - Document partition and merge assumptions.
 - Keep implementation unchanged.
 
@@ -157,7 +157,7 @@ Important: `buses_observed` is not safely mergeable by summing if the same bus c
 - Add tests for merging partial aggregates.
 - Verify results match current `RouteMonthSpeed` outputs.
 
-### Phase 3: Filesystem Producer-Consumer
+### Phase 3: Filesystem Work Items
 
 - Implement partition writer.
 - Implement manifest writer/reader.
@@ -217,7 +217,7 @@ Planned MiniPilot distributed run:
 - Route-only partitioning may create load imbalance.
 - Summing observed bus counts is only correct if buses do not appear in multiple partitions.
 - Launching worker JVMs may be harder to validate on the university server than local process execution.
-- Filesystem queues are simple and explainable, but not as robust as a real broker.
+- Filesystem work items are simple and explainable, but not as robust as a real broker-based implementation.
 
 ## Decision Checkpoint
 

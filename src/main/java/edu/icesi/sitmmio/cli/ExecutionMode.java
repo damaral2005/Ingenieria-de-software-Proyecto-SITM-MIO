@@ -2,6 +2,9 @@ package edu.icesi.sitmmio.cli;
 
 public enum ExecutionMode {
     THREAD_POOL,
+    DISTRIBUTED_PARTITION,
     DISTRIBUTED_MASTER,
-    DISTRIBUTED_WORKER
+    DISTRIBUTED_WORKER,
+    DISTRIBUTED_SCAN_WORKER,
+    DISTRIBUTED_MERGE
 }

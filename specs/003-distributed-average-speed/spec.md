@@ -14,10 +14,9 @@ Version 3 is a distributed Java CLI/runtime experiment:
 
 - Multiple JVM processes.
 - Local or remote worker processes.
-- File-based or lightweight queue-based task coordination.
-- Distributed Master-Worker as the primary distribution pattern.
-- Producer-Consumer as the task handoff and backpressure pattern.
-- Separable Dependencies as an internal design rule so domain calculation remains independent from distribution infrastructure.
+- File-based work-item coordination.
+- Distributed Master-Worker as the only distribution pattern.
+- Domain calculation remains independent from distribution infrastructure as code organization, not as an additional architecture pattern.
 
 ## Non-Goals
 
@@ -78,9 +77,9 @@ Numeric formatting must remain locale-independent.
 8. Support MiniPilot for correctness validation.
 9. Support datagrams4Pilot as the target scalability experiment.
 
-## Distribution Patterns
+## Distribution Pattern
 
-### Primary Pattern: Master-Worker
+### Distributed Master-Worker
 
 The master coordinates the distributed execution:
 
@@ -101,17 +100,7 @@ Workers execute isolated computation:
 - Aggregate partial route/month results.
 - Write or send partial results back to the master.
 
-### Supporting Pattern: Producer-Consumer
-
-The producer side creates work items from the input datagram file. Worker consumers take available work items, process them, and emit partial outputs. This pattern is used to decouple partition generation from partition processing and to make the number of workers configurable.
-
-### Internal Design Rule: Separable Dependencies
-
-Domain logic must remain separated from distribution infrastructure:
-
-- `SpeedSegmentCalculator` should not know whether it runs locally or distributed.
-- `RouteMonthAggregator` should not know about workers, queues, sockets, or files.
-- Distribution classes should depend on domain services, not the other way around.
+Partition files, manifest files, and partial result files are implementation details of the Master-Worker pattern. They are not presented as separate distribution patterns.
 
 ## Partitioning Strategy
 
@@ -172,7 +161,7 @@ For every experiment run, record:
 
 ## Open Questions
 
-- Should the first implementation use filesystem work queues or sockets?
+- Should the first implementation use filesystem work-item files or sockets?
 - Should workers be launched by the master or manually started?
 - Should partitioning be by `routeId + busId` from the start, or should Version 3 start with `routeId` and evolve?
 - Should the master stream partitions directly, or first materialize partition CSV files under `results/` or `build/`?

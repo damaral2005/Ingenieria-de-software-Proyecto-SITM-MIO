@@ -70,7 +70,9 @@ public final class CliParser {
                     parsePositiveInt(values.get("--partitions"), workerCount, "--partitions"),
                     pathOrNull(values.get("--work-dir")),
                     pathOrNull(values.get("--partition")),
-                    pathOrNull(values.get("--partial-output"))
+                    pathOrNull(values.get("--partial-output")),
+                    parseOptionalNonNegativeInt(values.get("--partition-id"), "--partition-id"),
+                    pathOrNull(values.get("--partial-results-dir"))
             );
             return ParseResult.success(options);
         } catch (IllegalArgumentException exception) {
@@ -106,14 +108,19 @@ public final class CliParser {
                 + "ThreadPool options:\n"
                 + "  --threads <number>             Default: available processors\n\n"
                 + "Distributed modes:\n"
+                + "  --distributed-partition        Create Version 3 partition files and manifest only\n"
                 + "  --distributed-master           Run Version 3 master process\n"
                 + "  --distributed-worker           Run Version 3 worker process\n"
+                + "  --distributed-scan-worker      Run Version 3 worker by scanning raw datagrams\n"
+                + "  --distributed-merge            Merge remote scan-worker partial results\n"
                 + "  --workers <number>             Worker JVM count for distributed master\n"
                 + "  --partitions <number>          Partition count for distributed master\n"
+                + "  --partition-id <number>        Hash partition id for scan-worker mode\n"
                 + "  --work-dir <path>              Distributed run work directory\n"
                 + "  --partition <path>             Worker input partition CSV\n"
                 + "  --partial-output <path>        Worker partial result CSV\n\n"
-                + "Default mode is Version 2 Thread Pool. Version 3 uses distributed Master-Worker with Producer-Consumer file work items.\n";
+                + "  --partial-results-dir <path>   Directory containing partial result CSVs for merge mode\n\n"
+                + "Default mode is Version 2 Thread Pool. Version 3 uses the distributed Master-Worker pattern.\n";
     }
 
     private static boolean isKnownOption(String option) {
@@ -137,13 +144,18 @@ public final class CliParser {
             case "--max-gap-minutes":
             case "--max-speed-kmh":
             case "--threads":
+            case "--distributed-partition":
             case "--distributed-master":
             case "--distributed-worker":
+            case "--distributed-scan-worker":
+            case "--distributed-merge":
             case "--workers":
             case "--partitions":
+            case "--partition-id":
             case "--work-dir":
             case "--partition":
             case "--partial-output":
+            case "--partial-results-dir":
                 return true;
             default:
                 return false;
@@ -151,20 +163,37 @@ public final class CliParser {
     }
 
     private static boolean isKnownFlag(String option) {
-        return "--distributed-master".equals(option) || "--distributed-worker".equals(option);
+        return "--distributed-partition".equals(option)
+                || "--distributed-master".equals(option)
+                || "--distributed-worker".equals(option)
+                || "--distributed-scan-worker".equals(option)
+                || "--distributed-merge".equals(option);
     }
 
     private static ExecutionMode resolveMode(Map<String, String> values) {
-        boolean distributedMaster = values.containsKey("--distributed-master");
-        boolean distributedWorker = values.containsKey("--distributed-worker");
-        if (distributedMaster && distributedWorker) {
+        int selectedModes = 0;
+        selectedModes += values.containsKey("--distributed-partition") ? 1 : 0;
+        selectedModes += values.containsKey("--distributed-master") ? 1 : 0;
+        selectedModes += values.containsKey("--distributed-worker") ? 1 : 0;
+        selectedModes += values.containsKey("--distributed-scan-worker") ? 1 : 0;
+        selectedModes += values.containsKey("--distributed-merge") ? 1 : 0;
+        if (selectedModes > 1) {
             return null;
         }
-        if (distributedMaster) {
+        if (values.containsKey("--distributed-partition")) {
+            return ExecutionMode.DISTRIBUTED_PARTITION;
+        }
+        if (values.containsKey("--distributed-master")) {
             return ExecutionMode.DISTRIBUTED_MASTER;
         }
-        if (distributedWorker) {
+        if (values.containsKey("--distributed-worker")) {
             return ExecutionMode.DISTRIBUTED_WORKER;
+        }
+        if (values.containsKey("--distributed-scan-worker")) {
+            return ExecutionMode.DISTRIBUTED_SCAN_WORKER;
+        }
+        if (values.containsKey("--distributed-merge")) {
+            return ExecutionMode.DISTRIBUTED_MERGE;
         }
         return ExecutionMode.THREAD_POOL;
     }
@@ -176,6 +205,45 @@ public final class CliParser {
             }
             if (!values.containsKey("--partial-output")) {
                 return "--partial-output";
+            }
+            return null;
+        }
+        if (mode == ExecutionMode.DISTRIBUTED_PARTITION) {
+            if (!values.containsKey("--lines")) {
+                return "--lines";
+            }
+            if (!values.containsKey("--datagrams")) {
+                return "--datagrams";
+            }
+            if (!values.containsKey("--work-dir")) {
+                return "--work-dir";
+            }
+            return null;
+        }
+        if (mode == ExecutionMode.DISTRIBUTED_SCAN_WORKER) {
+            if (!values.containsKey("--lines")) {
+                return "--lines";
+            }
+            if (!values.containsKey("--datagrams")) {
+                return "--datagrams";
+            }
+            if (!values.containsKey("--partial-output")) {
+                return "--partial-output";
+            }
+            if (!values.containsKey("--partition-id")) {
+                return "--partition-id";
+            }
+            return null;
+        }
+        if (mode == ExecutionMode.DISTRIBUTED_MERGE) {
+            if (!values.containsKey("--lines")) {
+                return "--lines";
+            }
+            if (!values.containsKey("--partial-results-dir")) {
+                return "--partial-results-dir";
+            }
+            if (!values.containsKey("--output")) {
+                return "--output";
             }
             return null;
         }

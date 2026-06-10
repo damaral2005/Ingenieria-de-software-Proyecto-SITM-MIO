@@ -35,6 +35,8 @@ public final class CliOptions {
     private final Path workDirectory;
     private final Path partitionPath;
     private final Path partialResultPath;
+    private final Integer partitionId;
+    private final Path partialResultsDirectory;
 
     public CliOptions(
             Path linesPath,
@@ -72,6 +74,8 @@ public final class CliOptions {
                 ExecutionMode.THREAD_POOL,
                 DEFAULT_WORKER_COUNT,
                 DEFAULT_WORKER_COUNT,
+                null,
+                null,
                 null,
                 null,
                 null);
@@ -120,6 +124,8 @@ public final class CliOptions {
                 ExecutionMode.THREAD_POOL,
                 DEFAULT_WORKER_COUNT,
                 DEFAULT_WORKER_COUNT,
+                null,
+                null,
                 null,
                 null,
                 null);
@@ -171,6 +177,8 @@ public final class CliOptions {
                 DEFAULT_WORKER_COUNT,
                 null,
                 null,
+                null,
+                null,
                 null);
     }
 
@@ -199,23 +207,45 @@ public final class CliOptions {
             int partitionCount,
             Path workDirectory,
             Path partitionPath,
-            Path partialResultPath
+            Path partialResultPath,
+            Integer partitionId,
+            Path partialResultsDirectory
     ) {
         ExecutionMode mode = executionMode == null ? ExecutionMode.THREAD_POOL : executionMode;
         if (mode != ExecutionMode.DISTRIBUTED_WORKER && linesPath == null) {
             throw new IllegalArgumentException("Lines path is required.");
         }
-        if (mode != ExecutionMode.DISTRIBUTED_WORKER && datagramsPath == null) {
+        if (mode != ExecutionMode.DISTRIBUTED_WORKER
+                && mode != ExecutionMode.DISTRIBUTED_MERGE
+                && datagramsPath == null) {
             throw new IllegalArgumentException("Datagrams path is required.");
         }
-        if (mode != ExecutionMode.DISTRIBUTED_WORKER && outputPath == null) {
+        if (mode != ExecutionMode.DISTRIBUTED_WORKER
+                && mode != ExecutionMode.DISTRIBUTED_SCAN_WORKER
+                && mode != ExecutionMode.DISTRIBUTED_PARTITION
+                && outputPath == null) {
             throw new IllegalArgumentException("Output path is required.");
+        }
+        if (mode == ExecutionMode.DISTRIBUTED_PARTITION && workDirectory == null) {
+            throw new IllegalArgumentException("Work directory is required for distributed partition mode.");
         }
         if (mode == ExecutionMode.DISTRIBUTED_WORKER && partitionPath == null) {
             throw new IllegalArgumentException("Partition path is required for distributed worker mode.");
         }
         if (mode == ExecutionMode.DISTRIBUTED_WORKER && partialResultPath == null) {
             throw new IllegalArgumentException("Partial result path is required for distributed worker mode.");
+        }
+        if (mode == ExecutionMode.DISTRIBUTED_SCAN_WORKER && partialResultPath == null) {
+            throw new IllegalArgumentException("Partial result path is required for distributed scan worker mode.");
+        }
+        if (mode == ExecutionMode.DISTRIBUTED_SCAN_WORKER && partitionId == null) {
+            throw new IllegalArgumentException("Partition id is required for distributed scan worker mode.");
+        }
+        if (mode == ExecutionMode.DISTRIBUTED_MERGE && partialResultsDirectory == null) {
+            throw new IllegalArgumentException("Partial results directory is required for distributed merge mode.");
+        }
+        if (partitionId != null && partitionId < 0) {
+            throw new IllegalArgumentException("Partition id must be zero or greater.");
         }
         if (maxGapMinutes <= 0) {
             throw new IllegalArgumentException("Max gap minutes must be greater than zero.");
@@ -261,6 +291,8 @@ public final class CliOptions {
         this.workDirectory = workDirectory;
         this.partitionPath = partitionPath;
         this.partialResultPath = partialResultPath;
+        this.partitionId = partitionId;
+        this.partialResultsDirectory = partialResultsDirectory;
     }
 
     public Path linesPath() {
@@ -361,5 +393,13 @@ public final class CliOptions {
 
     public Path partialResultPath() {
         return partialResultPath;
+    }
+
+    public Integer partitionId() {
+        return partitionId;
+    }
+
+    public Path partialResultsDirectory() {
+        return partialResultsDirectory;
     }
 }

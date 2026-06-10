@@ -5,7 +5,7 @@ Keep tasks small enough for focused commits.
 ## Spec Baseline
 
 - [x] Create Version 3 spec folder.
-- [x] Define selected distributed patterns.
+- [x] Define selected distributed pattern.
 - [x] Define Version 3 implementation plan.
 - [x] Define Version 3 task checklist.
 - [x] Define Version 3 research notes.
@@ -16,8 +16,8 @@ Keep tasks small enough for focused commits.
 
 - [ ] Draw deployment diagram for Version 3.
 - [ ] Document Master-Worker responsibilities.
-- [ ] Document Producer-Consumer task flow.
-- [ ] Document Separable Dependencies boundaries.
+- [ ] Document Master-Worker task flow.
+- [ ] Document code boundaries without presenting them as extra architecture patterns.
 - [ ] Define local multi-process deployment.
 - [ ] Define university-server deployment.
 - [ ] Define failure handling for missing or failed worker outputs.
@@ -36,6 +36,7 @@ Keep tasks small enough for focused commits.
 - [x] Add partition work item model.
 - [x] Add partition manifest model.
 - [x] Add partition writer.
+- [x] Add partition-only CLI mode for option B deployment.
 - [x] Partition by `routeId + busId` unless team chooses route-only first.
 - [x] Ensure partitioning streams input rows instead of loading all datagrams into memory.
 - [x] Add tests for active route filtering during partitioning.
@@ -52,6 +53,8 @@ Keep tasks small enough for focused commits.
 - [x] Worker writes partial result CSV.
 - [x] Worker reports task metrics.
 - [x] Add worker tests with tiny partition files.
+- [x] Add scan-worker mode for multi-PC raw datagram scanning.
+- [x] Add tests for scan-worker partition filtering.
 
 ## Master
 
@@ -65,6 +68,8 @@ Keep tasks small enough for focused commits.
 - [x] Master merges partial results.
 - [x] Master writes final deterministic CSV.
 - [x] Master prints distributed run summary.
+- [x] Add merge mode for partial CSVs produced on remote PCs.
+- [x] Add tests for remote partial merge.
 
 ## Experiment
 
@@ -73,18 +78,20 @@ Keep tasks small enough for focused commits.
 - [ ] Run Version 3 MiniPilot with 1 worker.
 - [ ] Run Version 3 MiniPilot with multiple worker counts.
 - [ ] Compare Version 2 and Version 3 MiniPilot output files.
-- [ ] Run Version 3 on datagrams4Pilot if environment allows.
-- [ ] Record memory behavior and runtime.
-- [ ] Determine when distribution is worth it.
+- [x] Run Version 3 on datagrams4Pilot if environment allows.
+- [x] Record memory behavior and runtime.
+- [x] Determine when distribution is worth it.
 
 ## Documentation
 
-- [ ] Update `docs/experiment-results.md` with Version 2 and Version 3 measurements.
+- [x] Update `docs/experiment-results.md` with Version 2 and Version 3 measurements.
 - [ ] Add Version 3 architecture drivers using QAW scenarios.
 - [ ] Add Version 3 deployment documentation.
-- [ ] Add pattern mapping documentation.
+- [ ] Add Master-Worker pattern mapping documentation.
 - [ ] Add CLI usage examples.
 - [ ] Add limitations and assumptions.
+- [x] Add multi-PC scan-worker runbook.
+- [x] Add Version 3 full pilot experiment analysis.
 
 ## Verification
 
@@ -95,12 +102,13 @@ Keep tasks small enough for focused commits.
 - [x] Version 3 partition tests pass.
 - [x] Version 3 worker tests pass.
 - [x] Version 3 merger tests pass.
+- [x] Version 3 scan-worker tests pass.
 - [ ] MiniPilot output equivalence is documented.
 
 ## Guardrails
 
 - [ ] Do not change speed calculation semantics without updating specs.
-- [ ] Do not introduce non-class patterns as the main Version 3 explanation.
+- [ ] Keep Master-Worker as the only Version 3 distribution pattern explanation.
 - [ ] Do not commit raw university datasets.
 - [ ] Do not require a database.
 - [ ] Do not require Spring Boot.

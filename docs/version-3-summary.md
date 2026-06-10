@@ -10,11 +10,11 @@ The current branch is:
 codex/version-3-distributed-master-worker
 ```
 
-## Selected Distributed Patterns
+## Selected Distributed Pattern
 
 ### Master-Worker
 
-This is the main Version 3 pattern.
+This is the only Version 3 distribution pattern.
 
 The master process is responsible for:
 
@@ -34,19 +34,9 @@ The worker process is responsible for:
 - Producing route/month partial aggregates.
 - Writing one partial result CSV.
 
-### Producer-Consumer
+Partition files, `manifest.csv`, and partial result CSVs are implementation details used by the Master-Worker implementation. They are not presented as additional architecture patterns.
 
-This is used as the task flow pattern.
-
-- The master/partitioner acts as the producer of work items.
-- Partition files and `manifest.csv` act as the work queue.
-- Worker JVMs consume partition work items and produce partial results.
-
-### Separable Dependencies
-
-This is used as an internal design rule.
-
-The distributed package coordinates processes and files, but core domain services remain independent:
+The distributed package coordinates processes and files, while core domain services remain independent:
 
 - Speed calculation remains in `SpeedSegmentCalculator`.
 - Geographic distance remains in `HaversineDistanceCalculator`.
@@ -88,6 +78,8 @@ New distributed options:
 --work-dir <path>
 --partition <path>
 --partial-output <path>
+--partition-id <number>
+--partial-results-dir <path>
 ```
 
 The existing Version 2 command still works without distributed flags.
@@ -112,6 +104,10 @@ Main classes:
 - `PartialRouteMonthAggregator`: creates partial aggregates from segments.
 - `PartialResultCsv`: reads and writes partial result CSV files.
 - `PartialResultMerger`: merges all partial results into final output rows.
+- `ScanWorkerProcessor`: scans raw datagrams and processes one hash partition without master-created partition files.
+- `DistributedPartialMerger`: merges scan-worker partial CSV files copied back from multiple PCs.
+- `DistributedPartitioner`: creates partition files and a manifest without immediately launching workers.
+- `DistributedPartialMerger`: merges partial CSV files from local or remote workers.
 
 ## Partitioning Strategy
 
@@ -144,7 +140,7 @@ The distributed master flow is:
 
 ## Remote Scripts
 
-Two helper scripts were added.
+Four helper scripts were added.
 
 Run Version 3 on the university server:
 
@@ -156,6 +152,30 @@ Compare V2 and V3 MiniPilot outputs:
 
 ```bash
 scripts/compare-v2-v3-minipilot.sh
+```
+
+Run one scan worker partition for the multi-PC flow:
+
+```bash
+PARTITION_ID=0 PARTITIONS=4 scripts/run-scan-worker-remote.sh
+```
+
+Merge scan-worker partial results:
+
+```bash
+scripts/merge-remote-scan-results.sh
+```
+
+Create partition files without launching workers:
+
+```bash
+PARTITIONS=64 scripts/create-distributed-partitions.sh
+```
+
+Run a worker for one generated partition file:
+
+```bash
+PARTITION_ID=0 WORK_DIR=results/distributed-pilot-v3 scripts/run-partition-worker.sh
 ```
 
 The distributed script uses the known real-data mapping:
@@ -188,20 +208,32 @@ A local smoke test was also run with synthetic data:
 - The master merged the partials.
 - The final CSV had the expected route/month rows.
 
+## Full Pilot Result
+
+Version 3 successfully processed `datagrams4Pilot.csv` on `104m05`.
+
+Summary:
+
+```text
+Raw datagrams: 806,400,773
+Cleaned datagrams: 782,565,720
+Skipped invalid datagrams: 23,835,053
+Valid segments: 736,951,733
+Partitions: 64
+Output rows: 1,443
+Output CSV: results/route_month_speeds_pilot_v3.csv
+Estimated total runtime: about 73.43 minutes
+```
+
+Detailed analysis is documented in:
+
+```text
+docs/version-3-experiment-analysis.md
+```
+
 ## Current Limitations
 
-- MiniPilot has not yet been validated on the university server for this branch.
 - V2 and V3 output equivalence still needs to be recorded with real MiniPilot data.
-- datagrams4Pilot still needs to be tested in the server environment.
 - Deployment diagrams and QAW scenarios still need to be documented.
 - Worker failure handling is basic: missing or failed worker outputs stop the run.
-
-## Next Steps
-
-1. Upload this branch/package to `swarch@10.147.17.103`.
-2. Build on the server with `./gradlew clean build`.
-3. Run V2 MiniPilot baseline.
-4. Run V3 MiniPilot with several worker/partition counts.
-5. Compare V2 and V3 outputs.
-6. Record runtime metrics in `docs/experiment-results.md`.
-7. Try datagrams4Pilot once MiniPilot equivalence is confirmed.
+- Multi-PC scan worker mode requires manually copying data and partial result CSV files between PCs.
