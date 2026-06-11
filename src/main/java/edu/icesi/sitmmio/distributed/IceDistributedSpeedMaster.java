@@ -89,14 +89,15 @@ public final class IceDistributedSpeedMaster {
 
         List<String> workerEndpoints = parseWorkerEndpoints(options.iceWorkers());
         long workerStartNanos = System.nanoTime();
-        List<IcePartitionWorkResponse> responses = invokeWorkers(
+        IceWorkerInvocationResult invocationResult = invokeWorkers(
                 options,
                 workerEndpoints,
                 partitioningSummary.workItems(),
                 partialResultsDirectory);
+        List<IcePartitionWorkResponse> responses = invocationResult.responses();
         long workerRuntimeMillis = Duration.ofNanos(System.nanoTime() - workerStartNanos).toMillis();
 
-        writeWorkerMetrics(workDirectory.resolve("ice-worker-metrics.csv"), responses, workerEndpoints.size());
+        writeWorkerMetrics(workDirectory.resolve("ice-worker-metrics.csv"), responses, invocationResult.workerCount());
 
         long mergeStartNanos = System.nanoTime();
         List<PartialRouteMonthAggregate> partialAggregates = new ArrayList<>();
@@ -127,39 +128,110 @@ public final class IceDistributedSpeedMaster {
                 partitionRuntimeMillis,
                 workerRuntimeMillis,
                 mergeRuntimeMillis,
-                workerEndpoints.size(),
+                invocationResult.workerCount(),
                 options.partitionCount());
     }
 
-    private List<IcePartitionWorkResponse> invokeWorkers(
+    private IceWorkerInvocationResult invokeWorkers(
             CliOptions options,
             List<String> workerEndpoints,
             List<PartitionWorkItem> workItems,
             Path partialResultsDirectory
     ) throws IOException {
         try (Communicator communicator = Util.initialize(new String[]{"--Ice.MessageSizeMax=0"})) {
+            List<String> availableEndpoints = availableWorkerEndpoints(communicator, workerEndpoints);
             List<IcePartitionWorkResponse> responses = new ArrayList<>();
             for (PartitionWorkItem workItem : workItems) {
-                String endpoint = workerEndpoints.get(workItem.partitionId() % workerEndpoints.size());
                 String partitionCsv = Files.readString(workItem.partitionPath(), StandardCharsets.UTF_8);
                 IcePartitionWorkRequest request = new IcePartitionWorkRequest(
                         workItem.partitionId(),
                         options.maxGapMinutes(),
                         options.maxSpeedKmh(),
                         partitionCsv);
-                IcePartitionWorkResponse response = invokeWorker(communicator, endpoint, request);
-                if (response.partitionId() != workItem.partitionId()) {
-                    throw new IOException("Ice worker returned partition "
-                            + response.partitionId() + " for requested partition " + workItem.partitionId() + ".");
-                }
+                IcePartitionWorkResponse response = invokeWorkerWithRetries(
+                        communicator,
+                        availableEndpoints,
+                        request,
+                        options.workerRetryCount());
                 Path partialPath = partialResultsDirectory.resolve(String.format(
                         "partial-%05d.csv",
                         workItem.partitionId()));
                 Files.writeString(partialPath, response.partialCsv(), StandardCharsets.UTF_8);
                 responses.add(response);
             }
-            return List.copyOf(responses);
+            return new IceWorkerInvocationResult(List.copyOf(responses), availableEndpoints.size());
         }
+    }
+
+    private static List<String> availableWorkerEndpoints(
+            Communicator communicator,
+            List<String> workerEndpoints
+    ) throws IOException {
+        List<String> available = new ArrayList<>();
+        IOException lastFailure = null;
+        for (String endpoint : workerEndpoints) {
+            try {
+                healthCheckWorker(communicator, endpoint);
+                available.add(endpoint);
+            } catch (IOException exception) {
+                lastFailure = exception;
+            }
+        }
+        if (available.isEmpty()) {
+            throw new IOException("No Ice workers passed health check.", lastFailure);
+        }
+        return List.copyOf(available);
+    }
+
+    private static void healthCheckWorker(Communicator communicator, String endpoint) throws IOException {
+        ObjectPrx worker = communicator.stringToProxy(endpoint);
+        if (worker == null) {
+            throw new IOException("Invalid Ice worker endpoint: " + endpoint);
+        }
+        byte[] inParams = IceInvocationCodec.writeString(communicator, "ping");
+        try {
+            Ice_invokeResult result = worker.ice_invoke(
+                    IceScanWorkerServant.HEALTH_CHECK,
+                    OperationMode.Normal,
+                    inParams);
+            if (!result.returnValue) {
+                throw new IOException("Ice worker health check returned false for endpoint: " + endpoint);
+            }
+            String response = IceInvocationCodec.readString(communicator, result.outParams);
+            if (!"OK".equals(response)) {
+                throw new IOException("Unexpected Ice worker health check response from "
+                        + endpoint + ": " + response);
+            }
+        } catch (LocalException exception) {
+            throw new IOException("Ice worker health check failed for " + endpoint + ": "
+                    + exception.getClass().getSimpleName() + " " + String.valueOf(exception.getMessage()),
+                    exception);
+        }
+    }
+
+    private static IcePartitionWorkResponse invokeWorkerWithRetries(
+            Communicator communicator,
+            List<String> workerEndpoints,
+            IcePartitionWorkRequest request,
+            int workerRetryCount
+    ) throws IOException {
+        IOException lastFailure = null;
+        int maxAttempts = Math.max(workerRetryCount + 1, workerEndpoints.size());
+        for (int attempt = 0; attempt < maxAttempts; attempt++) {
+            String endpoint = workerEndpoints.get((request.partitionId() + attempt) % workerEndpoints.size());
+            try {
+                IcePartitionWorkResponse response = invokeWorker(communicator, endpoint, request);
+                if (response.partitionId() != request.partitionId()) {
+                    throw new IOException("Ice worker returned partition "
+                            + response.partitionId() + " for requested partition " + request.partitionId() + ".");
+                }
+                return response;
+            } catch (IOException exception) {
+                lastFailure = exception;
+            }
+        }
+        throw new IOException("Ice partition " + request.partitionId() + " failed after "
+                + maxAttempts + " attempt(s).", lastFailure);
     }
 
     private static IcePartitionWorkResponse invokeWorker(
@@ -237,5 +309,23 @@ public final class IceDistributedSpeedMaster {
         Path baseDirectory = outputParent == null ? Path.of("results") : outputParent;
         String outputName = options.outputPath().getFileName().toString();
         return baseDirectory.resolve("ice-distributed-" + outputName.replace('.', '-'));
+    }
+
+    private static final class IceWorkerInvocationResult {
+        private final List<IcePartitionWorkResponse> responses;
+        private final int workerCount;
+
+        private IceWorkerInvocationResult(List<IcePartitionWorkResponse> responses, int workerCount) {
+            this.responses = responses;
+            this.workerCount = workerCount;
+        }
+
+        private List<IcePartitionWorkResponse> responses() {
+            return responses;
+        }
+
+        private int workerCount() {
+            return workerCount;
+        }
     }
 }

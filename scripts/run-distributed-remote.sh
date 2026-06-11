@@ -8,6 +8,7 @@ PILOT_FILE="/home/swarch/sitm-data/datagrams4Pilot.csv"
 RESULTS_DIR="results"
 WORKERS="${WORKERS:-4}"
 PARTITIONS="${PARTITIONS:-8}"
+WORKER_RETRIES="${WORKER_RETRIES:-2}"
 
 require_file() {
   local path="$1"
@@ -27,7 +28,8 @@ run_distributed() {
   echo "== Running Version 3 distributed calculation: $label =="
   echo "Workers: $WORKERS"
   echo "Partitions: $PARTITIONS"
-  ./gradlew run --args="--distributed-master --lines $LINES_FILE --datagrams $datagrams --output $output --workers $WORKERS --partitions $PARTITIONS --work-dir $work_dir --active-route-col LINEID --datagrams-has-header false --route-index 7 --bus-index 11 --timestamp-index 10 --latitude-index 4 --longitude-index 5 --coordinate-scale 10000000" \
+  echo "Worker retries: $WORKER_RETRIES"
+  ./gradlew run --args="--distributed-master --lines $LINES_FILE --datagrams $datagrams --output $output --workers $WORKERS --partitions $PARTITIONS --worker-retries $WORKER_RETRIES --work-dir $work_dir --active-route-col LINEID --datagrams-has-header false --route-index 7 --bus-index 11 --timestamp-index 10 --latitude-index 4 --longitude-index 5 --coordinate-scale 10000000" \
     2>&1 | tee "$log"
 }
 

@@ -26,6 +26,8 @@ Responsibilities:
 - Partition datagrams into work items.
 - Create a task manifest.
 - Launch or coordinate workers.
+- Check worker availability where the deployment supports it.
+- Retry failed work items before declaring the run failed.
 - Wait for worker outputs.
 - Merge partial outputs.
 - Write final CSV.
@@ -46,8 +48,9 @@ Responsibilities:
 Responsibilities:
 
 - Expose a long-running Ice object.
-- Receive partition assignments from the master.
-- Read the local datagram CSV copy on the worker PC.
+- Respond to lightweight health checks from the master.
+- Receive partition CSV payloads from the master.
+- Write received partition payloads to local temporary files.
 - Reuse the scan-worker processor to calculate a partial result.
 - Return the partial result CSV to the master over Ice.
 
@@ -199,6 +202,14 @@ Important: `buses_observed` is not safely mergeable by summing if the same bus c
 - Run Version 3 on datagrams4Pilot if environment allows.
 - Record the point where distribution is justified.
 
+### Phase 7: Reliability Hardening
+
+- Add configurable worker retry count with `--worker-retries`.
+- Retry local worker JVM executions when a worker exits non-zero or does not produce its partial CSV.
+- Add Ice worker health check operation.
+- Filter unavailable Ice endpoints before assigning partition work.
+- Retry failed Ice partition invocations against another healthy endpoint when available.
+
 ## Validation Commands
 
 Existing checks:
@@ -229,6 +240,8 @@ Planned MiniPilot distributed run:
 - Summing observed bus counts is only correct if buses do not appear in multiple partitions.
 - Launching worker JVMs may be harder to validate on the university server than local process execution.
 - Filesystem work items are simple and explainable, but not as robust as a real broker-based implementation.
+- Retries improve transient failure recovery, but they do not provide durable scheduling or exactly-once processing guarantees.
+- Ice health checks detect unavailable endpoints before a run, but a worker can still fail mid-run and consume retry budget.
 
 ## Decision Checkpoint
 

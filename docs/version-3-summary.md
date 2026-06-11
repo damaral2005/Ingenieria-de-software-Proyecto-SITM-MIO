@@ -79,6 +79,7 @@ New distributed options:
 ```text
 --workers <number>
 --partitions <number>
+--worker-retries <number>
 --work-dir <path>
 --partition <path>
 --partial-output <path>
@@ -136,11 +137,14 @@ The distributed master flow is:
 5. Write cleaned points into partition CSV files.
 6. Write `manifest.csv`.
 7. Launch worker JVMs.
-8. Each worker writes a partial result CSV.
-9. Master reads all partial result CSVs.
-10. Master merges by route/month.
-11. Master writes the final deterministic output CSV.
-12. Master prints distributed runtime metrics.
+8. Retry failed worker JVM tasks up to `--worker-retries` times.
+9. Each worker writes a partial result CSV.
+10. Master reads all partial result CSVs.
+11. Master merges by route/month.
+12. Master writes the final deterministic output CSV.
+13. Master prints distributed runtime metrics.
+
+For the Ice flow, the master first performs a lightweight `healthCheck` call against configured worker endpoints. Endpoints that do not respond are excluded from assignment. If an Ice partition invocation fails during the run, the master retries the same partition against the next healthy endpoint while retry budget remains.
 
 ## Remote Scripts
 
@@ -296,5 +300,5 @@ This run used remote Ice workers at `10.147.17.112:10000` and `10.147.17.104:100
 
 - V2 and V3 output equivalence still needs a formal file-by-file comparison recorded in the repository.
 - Deployment diagrams and QAW scenarios still need to be documented.
-- Worker failure handling is basic: missing or failed worker outputs stop the run.
+- Worker failure handling now includes bounded retries and Ice endpoint health checks, but it still does not provide durable scheduling, persistent task queues, or exactly-once guarantees.
 - The Ice full-pilot run requires many partitions for memory safety because partition CSV content is sent through Ice requests.

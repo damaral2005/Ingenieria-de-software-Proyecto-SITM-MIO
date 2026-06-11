@@ -9,6 +9,7 @@ public final class CliOptions {
     public static final double DEFAULT_COORDINATE_SCALE = 1.0;
     public static final int DEFAULT_THREAD_COUNT = Math.max(1, Runtime.getRuntime().availableProcessors());
     public static final int DEFAULT_WORKER_COUNT = DEFAULT_THREAD_COUNT;
+    public static final int DEFAULT_WORKER_RETRIES = 2;
 
     private final Path linesPath;
     private final Path datagramsPath;
@@ -32,6 +33,7 @@ public final class CliOptions {
     private final ExecutionMode executionMode;
     private final int workerCount;
     private final int partitionCount;
+    private final int workerRetryCount;
     private final Path workDirectory;
     private final Path partitionPath;
     private final Path partialResultPath;
@@ -78,6 +80,7 @@ public final class CliOptions {
                 ExecutionMode.THREAD_POOL,
                 DEFAULT_WORKER_COUNT,
                 DEFAULT_WORKER_COUNT,
+                DEFAULT_WORKER_RETRIES,
                 null,
                 null,
                 null,
@@ -132,6 +135,7 @@ public final class CliOptions {
                 ExecutionMode.THREAD_POOL,
                 DEFAULT_WORKER_COUNT,
                 DEFAULT_WORKER_COUNT,
+                DEFAULT_WORKER_RETRIES,
                 null,
                 null,
                 null,
@@ -187,6 +191,7 @@ public final class CliOptions {
                 ExecutionMode.THREAD_POOL,
                 DEFAULT_WORKER_COUNT,
                 DEFAULT_WORKER_COUNT,
+                DEFAULT_WORKER_RETRIES,
                 null,
                 null,
                 null,
@@ -221,6 +226,7 @@ public final class CliOptions {
             ExecutionMode executionMode,
             int workerCount,
             int partitionCount,
+            int workerRetryCount,
             Path workDirectory,
             Path partitionPath,
             Path partialResultPath,
@@ -292,6 +298,9 @@ public final class CliOptions {
         if (partitionCount <= 0) {
             throw new IllegalArgumentException("Partition count must be greater than zero.");
         }
+        if (workerRetryCount < 0) {
+            throw new IllegalArgumentException("Worker retry count must be zero or greater.");
+        }
         if (icePort <= 0 || icePort > 65535) {
             throw new IllegalArgumentException("Ice port must be between 1 and 65535.");
         }
@@ -321,6 +330,7 @@ public final class CliOptions {
         this.executionMode = mode;
         this.workerCount = workerCount;
         this.partitionCount = partitionCount;
+        this.workerRetryCount = workerRetryCount;
         this.workDirectory = workDirectory;
         this.partitionPath = partitionPath;
         this.partialResultPath = partialResultPath;
@@ -418,6 +428,10 @@ public final class CliOptions {
 
     public int partitionCount() {
         return partitionCount;
+    }
+
+    public int workerRetryCount() {
+        return workerRetryCount;
     }
 
     public Path workDirectory() {

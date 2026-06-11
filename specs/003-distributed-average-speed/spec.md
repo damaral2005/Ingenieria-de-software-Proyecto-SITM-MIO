@@ -76,6 +76,9 @@ Numeric formatting must remain locale-independent.
 7. Produce a run summary with distributed execution metrics.
 8. Support MiniPilot for correctness validation.
 9. Support datagrams4Pilot as the target scalability experiment.
+10. Retry failed worker work items a configurable number of times before failing the run.
+11. Check Ice worker availability before assigning remote partitions.
+12. Reassign Ice partition work to another healthy worker when an invocation fails and retry budget remains.
 
 ## Distribution Pattern
 
@@ -129,6 +132,8 @@ This is simpler to implement and easier to explain, but it may create uneven par
 - Correctness must match Version 2 on small synthetic fixtures and MiniPilot.
 - Distributed execution must be reproducible.
 - Worker failure should be detectable.
+- Worker failures should be recoverable when another attempt or healthy Ice worker is available.
+- Ice workers should expose a lightweight health check operation.
 - Worker outputs must be mergeable without depending on processing order.
 - The implementation must record enough metrics to decide when distribution is worth it.
 - The design should avoid loading the full 67 GB pilot file into memory.

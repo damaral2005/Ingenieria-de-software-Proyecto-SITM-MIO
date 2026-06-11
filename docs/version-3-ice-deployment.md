@@ -11,14 +11,17 @@ The old `--distributed-master` mode starts worker JVMs from the master machine. 
 ```text
 PC 110: Ice master
   - Reads CLI options.
-  - Sends partition ids to remote workers through Ice.
+  - Health-checks remote worker endpoints before assigning work.
+  - Sends partition CSV payloads to remote workers through Ice.
   - Receives partial CSV results through Ice.
+  - Retries failed partition invocations against healthy workers while retry budget remains.
   - Merges final route/month output.
 
 PC 112: Ice worker server
   - Listens on tcp -h 0.0.0.0 -p 10000.
-  - Receives partition assignments from the master.
-  - Reads its local copy of the datagram CSV.
+  - Responds to `healthCheck`.
+  - Receives partition CSV payloads from the master.
+  - Writes received payloads to local temporary partition files.
   - Calculates partial route/month aggregates.
 
 PC 104: Ice worker server
@@ -26,6 +29,7 @@ PC 104: Ice worker server
 ```
 
 The master sends partition assignments, not local Java processes. Each worker must already be running and reachable by IP before the master starts.
+The master uses `--worker-retries` to bound automatic recovery attempts. The default is `2`, so each failed partition gets its first attempt plus two retries.
 
 ## Required Files
 
@@ -249,17 +253,25 @@ export ICE_WORKERS="sitm-worker:tcp -h 10.147.17.112 -p 10000;sitm-worker:tcp -h
 JAVA_TOOL_OPTIONS="-Xmx8g" bash ./gradlew run --args="--ice-master --lines /home/swarch/sitm-data/lines-241-ActiveGT.csv --datagrams /home/swarch/sitm-data/datagrams4Pilot.csv --output results/pilot-ice.csv --work-dir results/ice-pilot --partitions 1024 --ice-workers \"$ICE_WORKERS\" --active-route-col LINEID --datagrams-has-header false --route-index 7 --bus-index 11 --timestamp-index 10 --latitude-index 4 --longitude-index 5 --coordinate-scale 10000000"
 ```
 
+To change retry behavior explicitly:
+
+```bash
+JAVA_TOOL_OPTIONS="-Xmx8g" bash ./gradlew run --args="--ice-master --lines /home/swarch/sitm-data/lines-241-ActiveGT.csv --datagrams /home/swarch/sitm-data/datagrams4Pilot.csv --output results/pilot-ice.csv --work-dir results/ice-pilot --partitions 1024 --worker-retries 3 --ice-workers \"$ICE_WORKERS\" --active-route-col LINEID --datagrams-has-header false --route-index 7 --bus-index 11 --timestamp-index 10 --latitude-index 4 --longitude-index 5 --coordinate-scale 10000000"
+```
+
 ### How Ice Work Is Exchanged
 
 The Ice master does not ask workers to read the full datagram CSV. Instead:
 
 1. The master reads and cleans the full input.
 2. The master partitions cleaned points by `routeId + busId`.
-3. The master sends one partition CSV payload to a remote worker with `processPartitionCsv`.
-4. The worker writes that payload to a local temporary file.
-5. The worker calculates partial route/month aggregates.
-6. The worker returns a compact partial CSV to the master.
-7. The master merges all returned partial CSVs.
+3. The master invokes `healthCheck` on configured worker endpoints and keeps the endpoints that respond.
+4. The master sends one partition CSV payload to a healthy remote worker with `processPartitionCsv`.
+5. The worker writes that payload to a local temporary file.
+6. The worker calculates partial route/month aggregates.
+7. The worker returns a compact partial CSV to the master.
+8. If an invocation fails, the master retries the partition on another healthy endpoint when available.
+9. The master merges all returned partial CSVs.
 
 For MiniPilot, 2 partitions were enough. For the full pilot, 1024 partitions were used because 64 and 512 partitions produced partition payloads large enough to cause memory pressure or lost worker connections.
 
@@ -302,6 +314,8 @@ diff -u results/route_month_speeds_minipilot_v2.csv results/route_month_speeds_m
 ## Troubleshooting
 
 - If the master cannot connect, confirm each worker terminal is still running and that the IP addresses match the current lab PCs.
-- If a worker fails with missing file errors, copy `lines-241-ActiveGT.csv` and the datagram CSV into the same path used by the master command.
+- If one worker is down before the run, the Ice health check excludes it and the master continues with the remaining healthy workers if at least one is available.
+- If a worker fails mid-run, increase `--worker-retries` only if the failure is transient; persistent worker errors should be fixed before rerunning.
+- If a worker fails with missing file errors in the normal `processPartitionCsv` Ice flow, verify its `WORK_DIR` is writable. Workers do not need the full datagram CSV for this flow.
 - If port `10000` is blocked or busy, restart the worker with `ICE_PORT=<port>` and update `ICE_WORKERS` on the master.
 - If the final result is incomplete, confirm `PARTITIONS` equals the number of intended partition ids and every master invocation completed.

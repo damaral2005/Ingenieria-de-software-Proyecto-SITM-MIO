@@ -68,6 +68,8 @@ public final class CliParser {
                     mode,
                     workerCount,
                     parsePositiveInt(values.get("--partitions"), workerCount, "--partitions"),
+                    parseNonNegativeInt(values.get("--worker-retries"), CliOptions.DEFAULT_WORKER_RETRIES,
+                            "--worker-retries"),
                     pathOrNull(values.get("--work-dir")),
                     pathOrNull(values.get("--partition")),
                     pathOrNull(values.get("--partial-output")),
@@ -121,6 +123,7 @@ public final class CliParser {
                 + "  --ice-worker-server            Run Version 3 Ice worker server\n"
                 + "  --workers <number>             Worker JVM count for distributed master\n"
                 + "  --partitions <number>          Partition count for distributed master\n"
+                + "  --worker-retries <number>      Worker retry count after failures. Default: 2\n"
                 + "  --partition-id <number>        Hash partition id for scan-worker mode\n"
                 + "  --work-dir <path>              Distributed run work directory\n"
                 + "  --partition <path>             Worker input partition CSV\n"
@@ -163,6 +166,7 @@ public final class CliParser {
             case "--ice-worker-server":
             case "--workers":
             case "--partitions":
+            case "--worker-retries":
             case "--partition-id":
             case "--work-dir":
             case "--partition":
@@ -325,6 +329,21 @@ public final class CliParser {
     private static Integer parseOptionalNonNegativeInt(String value, String optionName) {
         if (value == null) {
             return null;
+        }
+        try {
+            int parsed = Integer.parseInt(value);
+            if (parsed < 0) {
+                throw new IllegalArgumentException(optionName + " must be zero or greater.");
+            }
+            return parsed;
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException(optionName + " must be an integer.", exception);
+        }
+    }
+
+    private static int parseNonNegativeInt(String value, int defaultValue, String optionName) {
+        if (value == null) {
+            return defaultValue;
         }
         try {
             int parsed = Integer.parseInt(value);

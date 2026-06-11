@@ -88,8 +88,8 @@ public final class DistributedSpeedMaster {
         long partitionRuntimeMillis = Duration.ofNanos(System.nanoTime() - partitionStartNanos).toMillis();
 
         long workerStartNanos = System.nanoTime();
-        runWorkers(partitioningSummary.workItems(), options.workerCount(), options.maxGapMinutes(),
-                options.maxSpeedKmh());
+        runWorkers(partitioningSummary.workItems(), options.workerCount(), options.workerRetryCount(),
+                options.maxGapMinutes(), options.maxSpeedKmh());
         long workerRuntimeMillis = Duration.ofNanos(System.nanoTime() - workerStartNanos).toMillis();
 
         long mergeStartNanos = System.nanoTime();
@@ -125,6 +125,7 @@ public final class DistributedSpeedMaster {
     private void runWorkers(
             List<PartitionWorkItem> workItems,
             int workerCount,
+            int workerRetryCount,
             int maxGapMinutes,
             double maxSpeedKmh
     ) throws IOException {
@@ -133,7 +134,7 @@ public final class DistributedSpeedMaster {
             List<Future<?>> futures = new ArrayList<>();
             for (PartitionWorkItem workItem : workItems) {
                 futures.add(executor.submit(() -> {
-                    workerProcessLauncher.launchAndWait(workItem, maxGapMinutes, maxSpeedKmh);
+                    runWorkerWithRetries(workItem, workerRetryCount, maxGapMinutes, maxSpeedKmh);
                     return null;
                 }));
             }
@@ -142,6 +143,33 @@ public final class DistributedSpeedMaster {
             }
         } finally {
             executor.shutdown();
+        }
+    }
+
+    private void runWorkerWithRetries(
+            PartitionWorkItem workItem,
+            int workerRetryCount,
+            int maxGapMinutes,
+            double maxSpeedKmh
+    ) throws IOException {
+        IOException lastFailure = null;
+        int maxAttempts = workerRetryCount + 1;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            Files.deleteIfExists(workItem.partialResultPath());
+            try {
+                workerProcessLauncher.launchAndWait(workItem, maxGapMinutes, maxSpeedKmh);
+                if (!Files.exists(workItem.partialResultPath())) {
+                    throw new IOException("Worker completed without writing partial result: "
+                            + workItem.partialResultPath());
+                }
+                return;
+            } catch (IOException exception) {
+                lastFailure = exception;
+                if (attempt == maxAttempts) {
+                    throw new IOException("Distributed worker failed for partition "
+                            + workItem.partitionId() + " after " + maxAttempts + " attempt(s).", lastFailure);
+                }
+            }
         }
     }
 

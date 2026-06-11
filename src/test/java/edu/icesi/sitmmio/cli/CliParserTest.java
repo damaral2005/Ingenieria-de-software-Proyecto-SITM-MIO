@@ -78,6 +78,7 @@ final class CliParserTest {
                 "--output", "results/out.csv",
                 "--workers", "3",
                 "--partitions", "6",
+                "--worker-retries", "4",
                 "--work-dir", "build/distributed-test"
         });
 
@@ -85,7 +86,22 @@ final class CliParserTest {
         assertEquals(ExecutionMode.DISTRIBUTED_MASTER, result.options().executionMode());
         assertEquals(3, result.options().workerCount());
         assertEquals(6, result.options().partitionCount());
+        assertEquals(4, result.options().workerRetryCount());
         assertEquals(Path.of("build", "distributed-test"), result.options().workDirectory());
+    }
+
+    @Test
+    void rejectsNegativeWorkerRetryCount() {
+        ParseResult result = parser.parse(new String[]{
+                "--distributed-master",
+                "--lines", "lines.csv",
+                "--datagrams", "datagrams.csv",
+                "--output", "results/out.csv",
+                "--worker-retries", "-1"
+        });
+
+        assertFalse(result.valid());
+        assertEquals("--worker-retries must be zero or greater.", result.errorMessage());
     }
 
     @Test

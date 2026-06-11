@@ -20,7 +20,8 @@ Keep tasks small enough for focused commits.
 - [ ] Document code boundaries without presenting them as extra architecture patterns.
 - [ ] Define local multi-process deployment.
 - [x] Define university-server deployment.
-- [ ] Define failure handling for missing or failed worker outputs.
+- [x] Define failure handling for missing or failed worker outputs.
+- [x] Define retry and health-check behavior for Version 3 workers.
 
 ## Mergeable Domain Model
 
@@ -65,6 +66,9 @@ Keep tasks small enough for focused commits.
 - [x] Master launches or coordinates workers.
 - [x] Master waits for expected partial outputs.
 - [x] Master detects failed or missing outputs.
+- [x] Master retries failed local worker process tasks.
+- [x] Master performs Ice worker health checks before assignment.
+- [x] Master retries failed Ice partition invocations against healthy endpoints.
 - [x] Master merges partial results.
 - [x] Master writes final deterministic CSV.
 - [x] Master prints distributed run summary.
@@ -107,6 +111,7 @@ Keep tasks small enough for focused commits.
 - [x] Version 3 worker tests pass.
 - [x] Version 3 merger tests pass.
 - [x] Version 3 scan-worker tests pass.
+- [x] Version 3 Ice health-check test passes.
 - [ ] MiniPilot output equivalence with Version 2 is documented.
 
 ## Guardrails

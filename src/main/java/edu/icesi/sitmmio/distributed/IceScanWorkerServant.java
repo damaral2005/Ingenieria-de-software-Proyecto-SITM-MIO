@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 
 public final class IceScanWorkerServant implements Blobject {
+    static final String HEALTH_CHECK = "healthCheck";
     static final String PROCESS_SCAN_PARTITION = "processScanPartition";
     static final String PROCESS_PARTITION_CSV = "processPartitionCsv";
 
@@ -35,6 +36,13 @@ public final class IceScanWorkerServant implements Blobject {
 
     @Override
     public Ice_invokeResult ice_invoke(byte[] inParams, Current current) {
+        if (HEALTH_CHECK.equals(current.operation)) {
+            byte[] outParams = IceInvocationCodec.writeString(
+                    current.adapter.getCommunicator(),
+                    "OK");
+            return new Ice_invokeResult(true, outParams);
+        }
+
         if (!PROCESS_SCAN_PARTITION.equals(current.operation)
                 && !PROCESS_PARTITION_CSV.equals(current.operation)) {
             throw new UnknownException("Unsupported Ice worker operation: " + current.operation);
