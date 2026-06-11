@@ -22,6 +22,7 @@ The master process is responsible for:
 - Partitioning datagrams into independent work items.
 - Writing a work manifest.
 - Launching worker JVM processes.
+- In the Ice deployment, invoking remote worker objects and sending partition work over the network.
 - Waiting for partial outputs.
 - Merging partial results.
 - Writing the final deterministic CSV.
@@ -29,6 +30,7 @@ The master process is responsible for:
 The worker process is responsible for:
 
 - Reading one cleaned datagram partition.
+- In the Ice deployment, receiving one partition from the master and writing it to a local temporary partition file.
 - Sorting points by route, bus, and timestamp.
 - Calculating valid speed segments.
 - Producing route/month partial aggregates.
@@ -68,6 +70,8 @@ The CLI now supports three execution modes:
 default                 Version 2 Thread Pool
 --distributed-master    Version 3 master process
 --distributed-worker    Version 3 worker process
+--ice-master            Version 3 Ice master with remote workers
+--ice-worker-server     Version 3 long-running Ice worker server
 ```
 
 New distributed options:
@@ -178,6 +182,18 @@ Run a worker for one generated partition file:
 PARTITION_ID=0 WORK_DIR=results/distributed-pilot-v3 scripts/run-partition-worker.sh
 ```
 
+Run the Ice worker server:
+
+```bash
+bash scripts/run-ice-worker-remote.sh
+```
+
+Run the Ice master:
+
+```bash
+bash scripts/run-ice-master-remote.sh
+```
+
 The distributed script uses the known real-data mapping:
 
 ```text
@@ -255,9 +271,30 @@ Detailed analysis is documented in:
 docs/version-3-experiment-analysis.md
 ```
 
+## Full Pilot Ice Multi-PC Result
+
+Version 3 also successfully processed `datagrams4Pilot.csv` with the ZeroC Ice deployment.
+
+Summary:
+
+```text
+Raw datagrams: 806,400,773
+Cleaned datagrams: 782,565,720
+Skipped invalid datagrams: 23,835,053
+Valid segments: 736,951,733
+Workers: 2
+Partitions: 1024
+Output rows: 1,443
+Output CSV: results/pilot-ice.csv
+Total runtime: 5,099,359 ms
+Total runtime: about 84.99 minutes
+```
+
+This run used remote Ice workers at `10.147.17.112:10000` and `10.147.17.104:10001`. The master sent partition CSV content to the workers over Ice and merged the returned partial aggregates.
+
 ## Current Limitations
 
 - V2 and V3 output equivalence still needs a formal file-by-file comparison recorded in the repository.
 - Deployment diagrams and QAW scenarios still need to be documented.
 - Worker failure handling is basic: missing or failed worker outputs stop the run.
-- Multi-PC scan worker mode requires manually copying data and partial result CSV files between PCs.
+- The Ice full-pilot run requires many partitions for memory safety because partition CSV content is sent through Ice requests.

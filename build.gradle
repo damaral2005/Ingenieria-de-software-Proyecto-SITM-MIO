@@ -12,6 +12,7 @@ java {
 
 dependencies {
     implementation 'org.apache.commons:commons-csv:1.14.1'
+    implementation 'com.zeroc:ice:3.7.10'
     compileOnly 'com.github.spotbugs:spotbugs-annotations:4.9.8'
     testCompileOnly 'com.github.spotbugs:spotbugs-annotations:4.9.8'
 

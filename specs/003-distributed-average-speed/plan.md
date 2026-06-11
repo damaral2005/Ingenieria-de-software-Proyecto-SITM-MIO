@@ -9,7 +9,8 @@ Build Version 3 as an incremental extension of Version 2. Keep the calculation c
 Use:
 
 - Distributed Master-Worker as the only Version 3 distribution pattern.
-- File manifests, partition files, and partial result files as implementation details of Master-Worker.
+- ZeroC Ice remote calls for the lab deployment where the master runs on the central PC and worker servers run on separate PCs.
+- File manifests, partition files, and partial result files as implementation details of Master-Worker for local validation and fallback runs.
 - Domain logic separated from distribution mechanics as code organization, not as an additional architecture pattern.
 
 The Version 2 `ThreadPoolSpeedCalculator` already behaves as a local Master-Worker. Version 3 should preserve that mental model while replacing local `Callable` tasks with external worker process tasks.
@@ -39,6 +40,16 @@ Responsibilities:
 - Reuse existing cleaning, segment, and aggregation services.
 - Write a partial result file.
 - Exit with a clear status code.
+
+### Ice Worker Server
+
+Responsibilities:
+
+- Expose a long-running Ice object.
+- Receive partition assignments from the master.
+- Read the local datagram CSV copy on the worker PC.
+- Reuse the scan-worker processor to calculate a partial result.
+- Return the partial result CSV to the master over Ice.
 
 ### Merger
 

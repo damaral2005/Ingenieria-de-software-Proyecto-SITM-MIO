@@ -6,6 +6,8 @@ import edu.icesi.sitmmio.distributed.DistributedPartialMerger;
 import edu.icesi.sitmmio.distributed.DistributedPartitionSummary;
 import edu.icesi.sitmmio.distributed.DistributedPartitioner;
 import edu.icesi.sitmmio.distributed.DistributedSpeedMaster;
+import edu.icesi.sitmmio.distributed.IceDistributedSpeedMaster;
+import edu.icesi.sitmmio.distributed.IceScanWorkerServer;
 import edu.icesi.sitmmio.distributed.PartitionWorkItem;
 import edu.icesi.sitmmio.distributed.ScanWorkerProcessor;
 import edu.icesi.sitmmio.distributed.ScanWorkerRunSummary;
@@ -31,6 +33,8 @@ public final class CommandLineApp {
     private final WorkerProcessor workerProcessor;
     private final ScanWorkerProcessor scanWorkerProcessor;
     private final DistributedPartialMerger distributedPartialMerger;
+    private final IceDistributedSpeedMaster iceDistributedMaster;
+    private final IceScanWorkerServer iceScanWorkerServer;
     private final ActiveRoutesCsvReader activeRoutesReader;
 
     public CommandLineApp(PrintStream out, PrintStream err) {
@@ -43,6 +47,8 @@ public final class CommandLineApp {
         this.workerProcessor = new WorkerProcessor();
         this.scanWorkerProcessor = new ScanWorkerProcessor();
         this.distributedPartialMerger = new DistributedPartialMerger();
+        this.iceDistributedMaster = new IceDistributedSpeedMaster();
+        this.iceScanWorkerServer = new IceScanWorkerServer();
         this.activeRoutesReader = new ActiveRoutesCsvReader();
     }
 
@@ -100,6 +106,14 @@ public final class CommandLineApp {
                         options.outputPath());
                 out.print(summary.formatForConsole());
                 return 0;
+            }
+            if (options.executionMode() == ExecutionMode.ICE_MASTER) {
+                DistributedRunSummary summary = iceDistributedMaster.run(options);
+                out.print(summary.formatForConsole());
+                return 0;
+            }
+            if (options.executionMode() == ExecutionMode.ICE_WORKER_SERVER) {
+                return iceScanWorkerServer.run(options, out);
             }
             ThreadPoolRunSummary summary = calculator.run(options);
             out.print(summary.formatForConsole());

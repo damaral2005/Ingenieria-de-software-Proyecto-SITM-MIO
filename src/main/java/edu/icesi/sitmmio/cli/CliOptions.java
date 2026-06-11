@@ -37,6 +37,10 @@ public final class CliOptions {
     private final Path partialResultPath;
     private final Integer partitionId;
     private final Path partialResultsDirectory;
+    private final String iceWorkers;
+    private final String iceHost;
+    private final int icePort;
+    private final String iceIdentity;
 
     public CliOptions(
             Path linesPath,
@@ -78,7 +82,11 @@ public final class CliOptions {
                 null,
                 null,
                 null,
-                null);
+                null,
+                null,
+                null,
+                10000,
+                "sitm-worker");
     }
 
     public CliOptions(
@@ -128,7 +136,11 @@ public final class CliOptions {
                 null,
                 null,
                 null,
-                null);
+                null,
+                null,
+                null,
+                10000,
+                "sitm-worker");
     }
 
     public CliOptions(
@@ -179,7 +191,11 @@ public final class CliOptions {
                 null,
                 null,
                 null,
-                null);
+                null,
+                null,
+                null,
+                10000,
+                "sitm-worker");
     }
 
     public CliOptions(
@@ -209,20 +225,28 @@ public final class CliOptions {
             Path partitionPath,
             Path partialResultPath,
             Integer partitionId,
-            Path partialResultsDirectory
+            Path partialResultsDirectory,
+            String iceWorkers,
+            String iceHost,
+            int icePort,
+            String iceIdentity
     ) {
         ExecutionMode mode = executionMode == null ? ExecutionMode.THREAD_POOL : executionMode;
-        if (mode != ExecutionMode.DISTRIBUTED_WORKER && linesPath == null) {
+        if (mode != ExecutionMode.DISTRIBUTED_WORKER
+                && mode != ExecutionMode.ICE_WORKER_SERVER
+                && linesPath == null) {
             throw new IllegalArgumentException("Lines path is required.");
         }
         if (mode != ExecutionMode.DISTRIBUTED_WORKER
                 && mode != ExecutionMode.DISTRIBUTED_MERGE
+                && mode != ExecutionMode.ICE_WORKER_SERVER
                 && datagramsPath == null) {
             throw new IllegalArgumentException("Datagrams path is required.");
         }
         if (mode != ExecutionMode.DISTRIBUTED_WORKER
                 && mode != ExecutionMode.DISTRIBUTED_SCAN_WORKER
                 && mode != ExecutionMode.DISTRIBUTED_PARTITION
+                && mode != ExecutionMode.ICE_WORKER_SERVER
                 && outputPath == null) {
             throw new IllegalArgumentException("Output path is required.");
         }
@@ -244,6 +268,9 @@ public final class CliOptions {
         if (mode == ExecutionMode.DISTRIBUTED_MERGE && partialResultsDirectory == null) {
             throw new IllegalArgumentException("Partial results directory is required for distributed merge mode.");
         }
+        if (mode == ExecutionMode.ICE_MASTER && isBlank(iceWorkers)) {
+            throw new IllegalArgumentException("Ice worker endpoints are required for Ice master mode.");
+        }
         if (partitionId != null && partitionId < 0) {
             throw new IllegalArgumentException("Partition id must be zero or greater.");
         }
@@ -264,6 +291,12 @@ public final class CliOptions {
         }
         if (partitionCount <= 0) {
             throw new IllegalArgumentException("Partition count must be greater than zero.");
+        }
+        if (icePort <= 0 || icePort > 65535) {
+            throw new IllegalArgumentException("Ice port must be between 1 and 65535.");
+        }
+        if (mode == ExecutionMode.ICE_WORKER_SERVER && isBlank(iceIdentity)) {
+            throw new IllegalArgumentException("Ice identity is required for Ice worker server mode.");
         }
 
         this.linesPath = linesPath;
@@ -293,6 +326,10 @@ public final class CliOptions {
         this.partialResultPath = partialResultPath;
         this.partitionId = partitionId;
         this.partialResultsDirectory = partialResultsDirectory;
+        this.iceWorkers = iceWorkers;
+        this.iceHost = isBlank(iceHost) ? "0.0.0.0" : iceHost;
+        this.icePort = icePort;
+        this.iceIdentity = isBlank(iceIdentity) ? "sitm-worker" : iceIdentity;
     }
 
     public Path linesPath() {
@@ -401,5 +438,25 @@ public final class CliOptions {
 
     public Path partialResultsDirectory() {
         return partialResultsDirectory;
+    }
+
+    public String iceWorkers() {
+        return iceWorkers;
+    }
+
+    public String iceHost() {
+        return iceHost;
+    }
+
+    public int icePort() {
+        return icePort;
+    }
+
+    public String iceIdentity() {
+        return iceIdentity;
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 }

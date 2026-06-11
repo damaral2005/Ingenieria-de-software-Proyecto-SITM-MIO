@@ -147,3 +147,64 @@ Key conclusions:
 - The output passed basic integrity checks and contains no invalid numeric values.
 
 This MiniPilot run is useful as the correctness and workflow baseline for Version 3. The full pilot run remains the stronger evidence for when distribution is worthwhile.
+
+## Ice Multi-PC MiniPilot Run
+
+After validating the local/process-based Version 3 flow, the project was also deployed with ZeroC Ice so the master sends partition work to worker PCs over the network instead of launching workers on the same machine.
+
+### Ice Deployment Shape
+
+```text
+Master host: 104m10
+Worker endpoint 1: sitm-worker:tcp -h 10.147.17.112 -p 10000
+Worker endpoint 2: sitm-worker:tcp -h 10.147.17.104 -p 10000
+Project path: ~/sitm-mio-v3
+Input routes: /home/swarch/sitm-data/lines-241-ActiveGT.csv
+Input datagrams: /home/swarch/sitm-data/datagrams-MiniPilot.csv
+Output CSV: results/minipilot-ice.csv
+Work directory: results/ice-minipilot
+Partitions: 2
+Workers: 2
+```
+
+### Ice Master Command
+
+```bash
+export ICE_WORKERS="sitm-worker:tcp -h 10.147.17.112 -p 10000;sitm-worker:tcp -h 10.147.17.104 -p 10000"
+
+bash ./gradlew run --args="--ice-master --lines /home/swarch/sitm-data/lines-241-ActiveGT.csv --datagrams /home/swarch/sitm-data/datagrams-MiniPilot.csv --output results/minipilot-ice.csv --work-dir results/ice-minipilot --partitions 2 --ice-workers \"$ICE_WORKERS\" --active-route-col LINEID --datagrams-has-header false --route-index 7 --bus-index 11 --timestamp-index 10 --latitude-index 4 --longitude-index 5 --coordinate-scale 10000000"
+```
+
+### Ice Master Summary
+
+```text
+Active routes: 111
+Raw datagrams: 8,145,462
+Cleaned datagrams: 7,896,735
+Skipped invalid datagrams: 248,727
+Valid segments: 7,494,051
+Output rows: 111
+Worker count: 2
+Partition count: 2
+Partition runtime ms: 30,570
+Worker runtime ms: 23,134
+Merge runtime ms: 47
+Total runtime ms: 53,780
+Work directory: results/ice-minipilot
+Output CSV: results/minipilot-ice.csv
+Build result: BUILD SUCCESSFUL in 55s
+```
+
+### Ice Run Interpretation
+
+This run confirms the real multi-PC Ice deployment:
+
+- The master read and partitioned the MiniPilot CSV.
+- The master sent partition CSV content to two remote Ice workers.
+- Workers did not need a local copy of the MiniPilot datagram CSV.
+- Workers returned compact partial route/month CSVs to the master.
+- The master merged the partial outputs into the final deterministic CSV.
+
+The Ice run produced the same high-level row counts as the local Version 3 MiniPilot flow: 111 active routes, 111 output rows, 7,896,735 cleaned datagrams, and 7,494,051 valid segments. The total runtime was 53.780 seconds. This is slower than the local process-based MiniPilot run because the master sends partition data through Ice over the network; however, it demonstrates the required distributed deployment shape more accurately.
+
+With this MiniPilot Ice validation complete, the next experiment can move to `datagrams4Pilot.csv`, using the same master-worker deployment and increasing `--partitions` if memory or message size becomes a constraint.

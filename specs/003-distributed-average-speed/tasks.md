@@ -19,7 +19,7 @@ Keep tasks small enough for focused commits.
 - [ ] Document Master-Worker task flow.
 - [ ] Document code boundaries without presenting them as extra architecture patterns.
 - [ ] Define local multi-process deployment.
-- [ ] Define university-server deployment.
+- [x] Define university-server deployment.
 - [ ] Define failure handling for missing or failed worker outputs.
 
 ## Mergeable Domain Model
@@ -69,6 +69,9 @@ Keep tasks small enough for focused commits.
 - [x] Master writes final deterministic CSV.
 - [x] Master prints distributed run summary.
 - [x] Add merge mode for partial CSVs produced on remote PCs.
+- [x] Add Ice worker server mode for remote worker PCs.
+- [x] Add Ice master mode for central PC coordination.
+- [x] Add Ice deployment scripts for PCs 105, 103, and 104.
 - [x] Add tests for remote partial merge.
 
 ## Experiment
@@ -86,7 +89,7 @@ Keep tasks small enough for focused commits.
 
 - [x] Update `docs/experiment-results.md` with Version 2 and Version 3 measurements.
 - [ ] Add Version 3 architecture drivers using QAW scenarios.
-- [ ] Add Version 3 deployment documentation.
+- [x] Add Version 3 deployment documentation.
 - [ ] Add Master-Worker pattern mapping documentation.
 - [ ] Add CLI usage examples.
 - [ ] Add limitations and assumptions.

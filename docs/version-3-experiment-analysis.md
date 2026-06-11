@@ -231,3 +231,103 @@ Key conclusions:
 - The biggest performance cost is partitioning the full CSV, not merging.
 
 This gives a defensible point for distribution: distribution becomes worthwhile when the full dataset cannot be processed reliably by the single-JVM in-memory strategy and when partitioned workers can keep memory bounded.
+
+## Ice Multi-PC Full Pilot Run
+
+After the local/file-based distributed run, the full pilot was also executed with the ZeroC Ice deployment. This run is the strongest deployment evidence because the master communicated with worker PCs over the network instead of launching worker JVMs locally.
+
+### Ice Deployment Shape
+
+```text
+Master session: swarch@104m10
+Worker endpoint 1: sitm-worker:tcp -h 10.147.17.112 -p 10000
+Worker endpoint 2: sitm-worker:tcp -h 10.147.17.104 -p 10001
+Project path: ~/sitm-mio-v3
+Input routes: /home/swarch/sitm-data/lines-241-ActiveGT.csv
+Input datagrams: /home/swarch/sitm-data/datagrams4Pilot.csv
+Output CSV: results/pilot-ice.csv
+Work directory: results/ice-pilot
+Workers: 2
+Partitions: 1024
+Java heap: JAVA_TOOL_OPTIONS=-Xmx8g
+```
+
+### Ice Full Pilot Command
+
+```bash
+export ICE_WORKERS="sitm-worker:tcp -h 10.147.17.112 -p 10000;sitm-worker:tcp -h 10.147.17.104 -p 10001"
+
+JAVA_TOOL_OPTIONS="-Xmx8g" bash ./gradlew run --args="--ice-master --lines /home/swarch/sitm-data/lines-241-ActiveGT.csv --datagrams /home/swarch/sitm-data/datagrams4Pilot.csv --output results/pilot-ice.csv --work-dir results/ice-pilot --partitions 1024 --ice-workers \"$ICE_WORKERS\" --active-route-col LINEID --datagrams-has-header false --route-index 7 --bus-index 11 --timestamp-index 10 --latitude-index 4 --longitude-index 5 --coordinate-scale 10000000"
+```
+
+### Why 1024 Partitions?
+
+The first Ice full-pilot attempts with fewer partitions exposed a deployment-specific memory constraint:
+
+- With 64 partitions, each partition payload was too large to send and decode as one Ice request.
+- With 512 partitions, one worker still lost the connection during processing, which was consistent with worker memory pressure.
+- With 1024 partitions and `-Xmx8g`, each partition was small enough for the master to send over Ice and for the workers to decode, sort, calculate, aggregate, and return partial results.
+
+The selected partition count is therefore a memory-safety choice for the Ice deployment. It is higher than the 64 partitions used in the file-based run because the Ice run transfers partition CSV content through RPC messages, while the file-based run processes partition files directly.
+
+Each partition contains cleaned GPS points assigned by the stable hash of:
+
+```text
+routeId + busId
+```
+
+This preserves speed-segment correctness because all consecutive points for the same bus on the same route stay in one work unit.
+
+### Ice Communication Flow
+
+The Ice deployment still uses only the Distributed Master-Worker pattern:
+
+1. The master reads the active routes file.
+2. The master streams the full datagram CSV.
+3. The master cleans and filters GPS rows.
+4. The master writes 1024 cleaned partition CSV files under `results/ice-pilot/partitions/`.
+5. For each partition, the master invokes the remote Ice operation `processPartitionCsv`.
+6. The Ice request includes the partition id, speed thresholds, and the partition CSV content.
+7. The worker writes the received partition content to a local temporary partition file.
+8. The worker sorts points by route, bus, and timestamp.
+9. The worker calculates valid speed segments and route/month partial aggregates.
+10. The worker returns a compact partial-result CSV and metrics to the master.
+11. The master writes each returned partial under `results/ice-pilot/partial-results/`.
+12. The master merges all partial results and writes `results/pilot-ice.csv`.
+
+Workers do not require a local copy of `datagrams4Pilot.csv` in this Ice flow. They only need the project code and an open Ice worker server.
+
+### Ice Full Pilot Metrics
+
+```text
+Active routes: 111
+Raw datagrams: 806,400,773
+Cleaned datagrams: 782,565,720
+Skipped invalid datagrams: 23,835,053
+Valid segments: 736,951,733
+Output rows: 1,443
+Worker count: 2
+Partition count: 1024
+Partition runtime ms: 3,237,629
+Worker runtime ms: 1,861,148
+Merge runtime ms: 493
+Total runtime ms: 5,099,359
+Total runtime: about 84.99 minutes
+Work directory: results/ice-pilot
+Output CSV: results/pilot-ice.csv
+Build result: BUILD SUCCESSFUL in 1h 25m
+```
+
+### Ice Full Pilot Interpretation
+
+The Ice full-pilot run completed the same 806,400,773 raw datagrams and produced the same 1,443 output rows as the previous full pilot evidence. The valid segment count also matches the file-based distributed run: 736,951,733.
+
+The Ice run took about 85 minutes. This is slower than the file-based estimate of about 73 minutes because it adds RPC serialization, network transfer, and worker-side decoding for 1024 partition payloads. That overhead is acceptable for this experiment because the purpose of the Ice run is to demonstrate the required networked Master-Worker deployment, not only local multi-process execution.
+
+The successful full-pilot Ice run confirms:
+
+- The master can coordinate remote worker PCs with ZeroC Ice.
+- Workers can process assigned partitions without storing the full input dataset.
+- The route/bus partition strategy remains correct at full scale.
+- Increasing partition count bounds worker memory enough for the large dataset.
+- The final merge remains cheap because partial route/month results are compact.

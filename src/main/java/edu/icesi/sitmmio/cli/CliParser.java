@@ -72,7 +72,11 @@ public final class CliParser {
                     pathOrNull(values.get("--partition")),
                     pathOrNull(values.get("--partial-output")),
                     parseOptionalNonNegativeInt(values.get("--partition-id"), "--partition-id"),
-                    pathOrNull(values.get("--partial-results-dir"))
+                    pathOrNull(values.get("--partial-results-dir")),
+                    values.get("--ice-workers"),
+                    values.get("--ice-host"),
+                    parsePositiveInt(values.get("--ice-port"), 10000, "--ice-port"),
+                    values.get("--ice-identity")
             );
             return ParseResult.success(options);
         } catch (IllegalArgumentException exception) {
@@ -113,13 +117,19 @@ public final class CliParser {
                 + "  --distributed-worker           Run Version 3 worker process\n"
                 + "  --distributed-scan-worker      Run Version 3 worker by scanning raw datagrams\n"
                 + "  --distributed-merge            Merge remote scan-worker partial results\n"
+                + "  --ice-master                   Run Version 3 master with remote Ice workers\n"
+                + "  --ice-worker-server            Run Version 3 Ice worker server\n"
                 + "  --workers <number>             Worker JVM count for distributed master\n"
                 + "  --partitions <number>          Partition count for distributed master\n"
                 + "  --partition-id <number>        Hash partition id for scan-worker mode\n"
                 + "  --work-dir <path>              Distributed run work directory\n"
                 + "  --partition <path>             Worker input partition CSV\n"
                 + "  --partial-output <path>        Worker partial result CSV\n\n"
-                + "  --partial-results-dir <path>   Directory containing partial result CSVs for merge mode\n\n"
+                + "  --partial-results-dir <path>   Directory containing partial result CSVs for merge mode\n"
+                + "  --ice-workers <endpoints>      Semicolon-separated Ice worker proxies\n"
+                + "  --ice-host <host>              Worker server bind host. Default: 0.0.0.0\n"
+                + "  --ice-port <port>              Worker server TCP port. Default: 10000\n"
+                + "  --ice-identity <name>          Worker object identity. Default: sitm-worker\n\n"
                 + "Default mode is Version 2 Thread Pool. Version 3 uses the distributed Master-Worker pattern.\n";
     }
 
@@ -149,6 +159,8 @@ public final class CliParser {
             case "--distributed-worker":
             case "--distributed-scan-worker":
             case "--distributed-merge":
+            case "--ice-master":
+            case "--ice-worker-server":
             case "--workers":
             case "--partitions":
             case "--partition-id":
@@ -156,6 +168,10 @@ public final class CliParser {
             case "--partition":
             case "--partial-output":
             case "--partial-results-dir":
+            case "--ice-workers":
+            case "--ice-host":
+            case "--ice-port":
+            case "--ice-identity":
                 return true;
             default:
                 return false;
@@ -167,7 +183,9 @@ public final class CliParser {
                 || "--distributed-master".equals(option)
                 || "--distributed-worker".equals(option)
                 || "--distributed-scan-worker".equals(option)
-                || "--distributed-merge".equals(option);
+                || "--distributed-merge".equals(option)
+                || "--ice-master".equals(option)
+                || "--ice-worker-server".equals(option);
     }
 
     private static ExecutionMode resolveMode(Map<String, String> values) {
@@ -177,6 +195,8 @@ public final class CliParser {
         selectedModes += values.containsKey("--distributed-worker") ? 1 : 0;
         selectedModes += values.containsKey("--distributed-scan-worker") ? 1 : 0;
         selectedModes += values.containsKey("--distributed-merge") ? 1 : 0;
+        selectedModes += values.containsKey("--ice-master") ? 1 : 0;
+        selectedModes += values.containsKey("--ice-worker-server") ? 1 : 0;
         if (selectedModes > 1) {
             return null;
         }
@@ -194,6 +214,12 @@ public final class CliParser {
         }
         if (values.containsKey("--distributed-merge")) {
             return ExecutionMode.DISTRIBUTED_MERGE;
+        }
+        if (values.containsKey("--ice-master")) {
+            return ExecutionMode.ICE_MASTER;
+        }
+        if (values.containsKey("--ice-worker-server")) {
+            return ExecutionMode.ICE_WORKER_SERVER;
         }
         return ExecutionMode.THREAD_POOL;
     }
@@ -245,6 +271,24 @@ public final class CliParser {
             if (!values.containsKey("--output")) {
                 return "--output";
             }
+            return null;
+        }
+        if (mode == ExecutionMode.ICE_MASTER) {
+            if (!values.containsKey("--lines")) {
+                return "--lines";
+            }
+            if (!values.containsKey("--datagrams")) {
+                return "--datagrams";
+            }
+            if (!values.containsKey("--output")) {
+                return "--output";
+            }
+            if (!values.containsKey("--ice-workers")) {
+                return "--ice-workers";
+            }
+            return null;
+        }
+        if (mode == ExecutionMode.ICE_WORKER_SERVER) {
             return null;
         }
         if (!values.containsKey("--lines")) {

@@ -167,6 +167,45 @@ final class CliParserTest {
     }
 
     @Test
+    void parsesIceMasterMode() {
+        ParseResult result = parser.parse(new String[]{
+                "--ice-master",
+                "--lines", "/home/swarch/sitm-data/lines-241-ActiveGT.csv",
+                "--datagrams", "/home/swarch/sitm-data/datagrams4Pilot.csv",
+                "--output", "results/out.csv",
+                "--ice-workers", "sitm-worker:tcp -h 10.147.17.103 -p 10000;"
+                        + "sitm-worker:tcp -h 10.147.17.104 -p 10000",
+                "--partitions", "2",
+                "--work-dir", "results/ice-run"
+        });
+
+        assertTrue(result.valid());
+        assertEquals(ExecutionMode.ICE_MASTER, result.options().executionMode());
+        assertEquals("sitm-worker:tcp -h 10.147.17.103 -p 10000;"
+                + "sitm-worker:tcp -h 10.147.17.104 -p 10000", result.options().iceWorkers());
+        assertEquals(2, result.options().partitionCount());
+        assertEquals(Path.of("results", "ice-run"), result.options().workDirectory());
+    }
+
+    @Test
+    void parsesIceWorkerServerMode() {
+        ParseResult result = parser.parse(new String[]{
+                "--ice-worker-server",
+                "--work-dir", "results/ice-worker",
+                "--ice-host", "0.0.0.0",
+                "--ice-port", "11000",
+                "--ice-identity", "worker-103"
+        });
+
+        assertTrue(result.valid());
+        assertEquals(ExecutionMode.ICE_WORKER_SERVER, result.options().executionMode());
+        assertEquals("0.0.0.0", result.options().iceHost());
+        assertEquals(11000, result.options().icePort());
+        assertEquals("worker-103", result.options().iceIdentity());
+        assertEquals(Path.of("results", "ice-worker"), result.options().workDirectory());
+    }
+
+    @Test
     void rejectsMissingRequiredArguments() {
         ParseResult result = parser.parse(new String[]{"--lines", "lines.csv"});
 

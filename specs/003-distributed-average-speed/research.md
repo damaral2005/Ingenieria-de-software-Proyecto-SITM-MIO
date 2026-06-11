@@ -106,23 +106,25 @@ Decision:
 
 Use filesystem manifests, partition files, and result files as implementation details of the distributed Master-Worker pattern.
 
-### Sockets or REST
+### ZeroC Ice
 
 Advantages:
 
 - More visibly distributed.
-- Can support long-running workers.
+- Supports long-running remote worker objects.
+- Matches the lab deployment expectation: one master PC invokes worker PCs over the network.
+- Avoids replacing the assignment with REST, brokers, or a client-server web stack.
 
 Risks:
 
 - More code.
 - More failure modes.
 - Harder to test.
-- May distract from the assignment goal.
+- Requires the Ice runtime dependency on every PC.
 
 Decision:
 
-Avoid for the initial Version 3 unless the instructor specifically expects networked workers.
+Use Ice for the real lab deployment. Keep the filesystem/process modes as local validation and fallback tooling, but present the deployed Version 3 as a Master-Worker system where the master assigns partitions to remote Ice workers.
 
 ## Experiment Questions
 
