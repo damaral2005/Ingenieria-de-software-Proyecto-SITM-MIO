@@ -10,6 +10,8 @@ java {
     targetCompatibility = JavaVersion.VERSION_11
 }
 
+compileJava.options.encoding = 'UTF-8'
+
 dependencies {
     implementation 'org.apache.commons:commons-csv:1.10.0'
 }

@@ -30,6 +30,14 @@ public class VisualizationApp extends JFrame {
     private static final Color COLOR_SPEED_MED   = new Color(255, 180, 0);
     private static final Color COLOR_SPEED_HIGH  = new Color(200, 30, 30);
 
+    // ── Configuracion formato datagrams-MiniPilot.csv ─────────────────────────
+    private static final int    ROUTE_COL  = 7;
+    private static final int    BUS_COL    = 11;
+    private static final int    LAT_COL    = 4;
+    private static final int    LON_COL    = 5;
+    private static final double COORD_SCALE = 10_000_000.0;
+    private static final int    SAMPLE_RATE = 15; // 1 de cada 15 filas
+
     // ── Datos ─────────────────────────────────────────────────────────────────
     private List<GpsRecord>         allGpsRecords     = new ArrayList<>();
     private List<SpeedRecord>       allSpeedRecords   = new ArrayList<>();
@@ -47,10 +55,6 @@ public class VisualizationApp extends JFrame {
     private DefaultTableModel       tableModel;
     private JLabel                  statsLabel;
 
-    // ── Paths (configurables) ─────────────────────────────────────────────────
-    private String datagramsPath = "/opt/sitm-mio/datagrams-MiniPilot.csv";
-    private String speedsPath    = "results/route_month_speeds_v1.csv";
-
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             try {
@@ -61,7 +65,7 @@ public class VisualizationApp extends JFrame {
     }
 
     public VisualizationApp() {
-        super("SITM-MIO — Visualización de Recorridos y Velocidades");
+        super("SITM-MIO — Visualizacion de Recorridos y Velocidades");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1400, 900);
         setMinimumSize(new Dimension(1100, 700));
@@ -71,10 +75,9 @@ public class VisualizationApp extends JFrame {
         loadDemoData();
     }
 
-    // ── Construcción de la UI ─────────────────────────────────────────────────
+    // ── Construccion de la UI ─────────────────────────────────────────────────
     private void buildUI() {
         setLayout(new BorderLayout(0, 0));
-
         add(buildHeader(),    BorderLayout.NORTH);
         add(buildSidebar(),   BorderLayout.WEST);
         add(buildCenter(),    BorderLayout.CENTER);
@@ -87,11 +90,11 @@ public class VisualizationApp extends JFrame {
         header.setBorder(new EmptyBorder(12, 20, 12, 20));
         header.setPreferredSize(new Dimension(0, 65));
 
-        JLabel title = new JLabel("🚌  SITM-MIO  —  Sistema Inteligente de Transporte Masivo");
+        JLabel title = new JLabel("SITM-MIO  —  Sistema Inteligente de Transporte Masivo");
         title.setFont(new Font("Arial", Font.BOLD, 20));
         title.setForeground(Color.WHITE);
 
-        JLabel subtitle = new JLabel("Visualización de Recorridos GPS y Velocidades Promedio por Ruta");
+        JLabel subtitle = new JLabel("Visualizacion de Recorridos GPS y Velocidades Promedio por Ruta");
         subtitle.setFont(new Font("Arial", Font.PLAIN, 12));
         subtitle.setForeground(new Color(255, 220, 220));
 
@@ -101,7 +104,7 @@ public class VisualizationApp extends JFrame {
         titlePanel.add(subtitle);
         header.add(titlePanel, BorderLayout.WEST);
 
-        JLabel logo = new JLabel("Icesi University  |  Ingeniería de Software");
+        JLabel logo = new JLabel("Icesi University  |  Ingenieria de Software");
         logo.setFont(new Font("Arial", Font.ITALIC, 11));
         logo.setForeground(new Color(255, 200, 200));
         logo.setHorizontalAlignment(SwingConstants.RIGHT);
@@ -117,7 +120,7 @@ public class VisualizationApp extends JFrame {
         sidebar.setBorder(new EmptyBorder(15, 15, 15, 15));
         sidebar.setPreferredSize(new Dimension(280, 0));
 
-        sidebar.add(sectionLabel("📂  FUENTES DE DATOS"));
+        sidebar.add(sectionLabel("FUENTES DE DATOS"));
         sidebar.add(Box.createVerticalStrut(8));
 
         JButton loadDatagramsBtn = styledButton("Cargar Datagramas CSV", COLOR_MIO_RED);
@@ -130,12 +133,12 @@ public class VisualizationApp extends JFrame {
         sidebar.add(loadSpeedsBtn);
         sidebar.add(Box.createVerticalStrut(6));
 
-        JButton demoBtn = styledButton("↺  Cargar Datos Demo", new Color(60, 60, 80));
+        JButton demoBtn = styledButton("Cargar Datos Demo", new Color(60, 60, 80));
         demoBtn.addActionListener(e -> loadDemoData());
         sidebar.add(demoBtn);
 
         sidebar.add(Box.createVerticalStrut(20));
-        sidebar.add(sectionLabel("🔍  FILTROS"));
+        sidebar.add(sectionLabel("FILTROS"));
         sidebar.add(Box.createVerticalStrut(8));
 
         JLabel routeLabel = new JLabel("Seleccionar Ruta:");
@@ -154,17 +157,17 @@ public class VisualizationApp extends JFrame {
         sidebar.add(routeCombo);
 
         sidebar.add(Box.createVerticalStrut(20));
-        sidebar.add(sectionLabel("📊  ESTADÍSTICAS"));
+        sidebar.add(sectionLabel("ESTADISTICAS"));
         sidebar.add(Box.createVerticalStrut(8));
 
         statsLabel = new JLabel("<html><body style='color:#ddd;font-size:11px'>" +
-                "Selecciona una ruta para<br>ver estadísticas.</body></html>");
+                "Selecciona una ruta para<br>ver estadisticas.</body></html>");
         statsLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         sidebar.add(statsLabel);
 
         sidebar.add(Box.createVerticalGlue());
 
-        sidebar.add(sectionLabel("ℹ️  ACERCA DE"));
+        sidebar.add(sectionLabel("ACERCA DE"));
         sidebar.add(Box.createVerticalStrut(4));
         JLabel about = new JLabel("<html><body style='color:#aaa;font-size:10px'>" +
                 "SITM-MIO v1.0<br>" +
@@ -181,21 +184,16 @@ public class VisualizationApp extends JFrame {
         center.setBackground(COLOR_PANEL_BG);
         center.setBorder(new EmptyBorder(8, 8, 8, 8));
 
-        // Panel izquierdo: mapa
         JPanel leftPanel = new JPanel(new BorderLayout(0, 6));
         leftPanel.setBackground(COLOR_PANEL_BG);
-
-        JLabel mapTitle = panelTitle("🗺️  Recorrido GPS de la Ruta");
+        JLabel mapTitle = panelTitle("Recorrido GPS de la Ruta");
         leftPanel.add(mapTitle, BorderLayout.NORTH);
-
         mapPanel = new RouteMapPanel();
         leftPanel.add(mapPanel, BorderLayout.CENTER);
 
-        // Panel derecho: chart + tabla
         JPanel rightPanel = new JPanel(new BorderLayout(0, 6));
         rightPanel.setBackground(COLOR_PANEL_BG);
-
-        JLabel chartTitle = panelTitle("📈  Velocidad Promedio por Mes (km/h)");
+        JLabel chartTitle = panelTitle("Velocidad Promedio por Mes (km/h)");
         rightPanel.add(chartTitle, BorderLayout.NORTH);
 
         chartPanel = new SpeedChartPanel();
@@ -242,7 +240,7 @@ public class VisualizationApp extends JFrame {
         statusLabel.setFont(new Font("Arial", Font.PLAIN, 11));
         bar.add(statusLabel, BorderLayout.WEST);
 
-        JLabel hint = new JLabel("SITM-MIO Visualizer  |  Ingeniería de Software — Universidad Icesi");
+        JLabel hint = new JLabel("SITM-MIO Visualizer  |  Ingenieria de Software — Universidad Icesi");
         hint.setForeground(new Color(100, 100, 120));
         hint.setFont(new Font("Arial", Font.PLAIN, 10));
         bar.add(hint, BorderLayout.EAST);
@@ -291,21 +289,15 @@ public class VisualizationApp extends JFrame {
         allSpeedRecords.clear();
         routes.clear();
 
-        // Rutas demo simulando el MIO de Cali
         String[] demoRoutes = {"A10", "B15", "C22", "D31", "E45", "F52", "G67", "H73"};
-
         Random rng = new Random(42);
-
-        // Coordenadas base de Cali
         double baseLat = 3.4516;
         double baseLon = -76.5320;
 
         for (String route : demoRoutes) {
             routes.add(route);
-            // Generar trayectoria GPS para cada ruta
             double lat = baseLat + (rng.nextDouble() - 0.5) * 0.15;
             double lon = baseLon + (rng.nextDouble() - 0.5) * 0.15;
-
             for (int point = 0; point < 80; point++) {
                 lat += (rng.nextDouble() - 0.48) * 0.003;
                 lon += (rng.nextDouble() - 0.48) * 0.003;
@@ -313,15 +305,12 @@ public class VisualizationApp extends JFrame {
                 lon  = Math.max(-76.62, Math.min(-76.45, lon));
                 allGpsRecords.add(new GpsRecord(route, "BUS-" + (rng.nextInt(5) + 1), lat, lon));
             }
-
-            // Generar velocidades por mes
             for (int month = 1; month <= 6; month++) {
                 double speed = 18 + rng.nextDouble() * 20;
                 double dist  = 150 + rng.nextDouble() * 300;
                 long segs    = 200 + rng.nextInt(500);
                 long buses   = 3 + rng.nextInt(8);
-                allSpeedRecords.add(new SpeedRecord(route,
-                        YearMonth.of(2024, month), speed, dist, segs, buses));
+                allSpeedRecords.add(new SpeedRecord(route, YearMonth.of(2024, month), speed, dist, segs, buses));
             }
         }
 
@@ -329,10 +318,8 @@ public class VisualizationApp extends JFrame {
         routeCombo.addItem("— Seleccionar ruta —");
         for (String r : routes) routeCombo.addItem(r);
 
-        statusLabel.setText("✓ Datos demo cargados: " + routes.size() +
-                " rutas, " + allGpsRecords.size() + " puntos GPS, " +
-                allSpeedRecords.size() + " registros de velocidad.");
-
+        statusLabel.setText("Datos demo cargados: " + routes.size() +
+                " rutas, " + allGpsRecords.size() + " puntos GPS.");
         mapPanel.clearRoute();
         chartPanel.clearData();
         clearTable();
@@ -354,39 +341,82 @@ public class VisualizationApp extends JFrame {
         }
     }
 
+    // ── METODO MODIFICADO: lee el formato real de datagrams-MiniPilot.csv ─────
     private void loadDatagramsFromFile(String path) {
-        allGpsRecords.clear();
-        routes.clear();
-        Set<String> routeSet = new LinkedHashSet<>();
-        int loaded = 0;
-        try (BufferedReader br = Files.newBufferedReader(Paths.get(path))) {
-            String line;
-            boolean first = true;
-            while ((line = br.readLine()) != null) {
-                if (first) { first = false; continue; } // skip header
-                String[] parts = line.split(",", -1);
-                if (parts.length < 6) continue;
-                try {
-                    String routeId = parts[0].trim();
-                    String busId   = parts[1].trim();
-                    double lat     = Double.parseDouble(parts[3].trim());
-                    double lon     = Double.parseDouble(parts[4].trim());
-                    if (lat < 3.0 || lat > 4.0 || lon < -77.5 || lon > -75.5) continue;
-                    allGpsRecords.add(new GpsRecord(routeId, busId, lat, lon));
-                    routeSet.add(routeId);
-                    loaded++;
-                } catch (NumberFormatException ignored) {}
+        statusLabel.setText("Cargando datagramas... puede tardar 20-40 segundos.");
+
+        SwingWorker<Void, String> worker = new SwingWorker<Void, String>() {
+            final List<GpsRecord>    newRecords = new ArrayList<>();
+            final Set<String>        routeSet   = new LinkedHashSet<>();
+            int loaded = 0;
+
+            @Override
+            protected Void doInBackground() {
+                try (BufferedReader br = new BufferedReader(
+                        new InputStreamReader(
+                            new FileInputStream(path),
+                            java.nio.charset.Charset.forName("ISO-8859-1")), 1 << 20)) {
+
+                    String line;
+                    int lineNum = 0;
+                    while ((line = br.readLine()) != null) {
+                        lineNum++;
+                        // Tomar 1 de cada SAMPLE_RATE filas para rendimiento
+                        if (lineNum % SAMPLE_RATE != 0) continue;
+
+                        String[] parts = line.split(",", -1);
+                        if (parts.length <= Math.max(ROUTE_COL, Math.max(BUS_COL,
+                                Math.max(LAT_COL, LON_COL)))) continue;
+
+                        try {
+                            String routeId = parts[ROUTE_COL].trim();
+                            String busId   = parts[BUS_COL].trim();
+                            double lat     = Long.parseLong(parts[LAT_COL].trim()) / COORD_SCALE;
+                            double lon     = Long.parseLong(parts[LON_COL].trim()) / COORD_SCALE;
+
+                            if (routeId.isEmpty()) continue;
+                            if (lat < 3.0 || lat > 4.0 || lon < -77.5 || lon > -75.5) continue;
+
+                            newRecords.add(new GpsRecord(routeId, busId, lat, lon));
+                            routeSet.add(routeId);
+                            loaded++;
+                        } catch (NumberFormatException ignored) {}
+
+                        if (lineNum % 200_000 == 0) {
+                            publish("Cargando... " + loaded + " puntos leidos, " + routeSet.size() + " rutas encontradas.");
+                        }
+                    }
+                } catch (IOException ex) {
+                    publish("ERROR: " + ex.getMessage());
+                }
+                return null;
             }
-        } catch (IOException ex) {
-            JOptionPane.showMessageDialog(this, "Error leyendo archivo: " + ex.getMessage(),
-                    "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-        routes.addAll(routeSet);
-        routeCombo.removeAllItems();
-        routeCombo.addItem("— Seleccionar ruta —");
-        for (String r : routes) routeCombo.addItem(r);
-        statusLabel.setText("✓ Datagramas cargados: " + loaded + " puntos GPS, " + routes.size() + " rutas.");
+
+            @Override
+            protected void process(List<String> chunks) {
+                statusLabel.setText(chunks.get(chunks.size() - 1));
+            }
+
+            @Override
+            protected void done() {
+                allGpsRecords.clear();
+                routes.clear();
+                allGpsRecords.addAll(newRecords);
+                routes.addAll(routeSet);
+
+                routeCombo.removeAllItems();
+                routeCombo.addItem("— Seleccionar ruta —");
+                for (String r : routes) routeCombo.addItem(r);
+
+                mapPanel.clearRoute();
+                chartPanel.clearData();
+                clearTable();
+
+                statusLabel.setText("Datagramas cargados: " + loaded +
+                        " puntos GPS, " + routes.size() + " rutas reales del MIO.");
+            }
+        };
+        worker.execute();
     }
 
     private void loadSpeedsFromFile(String path) {
@@ -415,11 +445,11 @@ public class VisualizationApp extends JFrame {
                     "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        statusLabel.setText("✓ Resultados cargados: " + loaded + " registros de velocidad.");
+        statusLabel.setText("Resultados de velocidad cargados: " + loaded + " registros.");
         if (selectedRoute != null) onRouteSelected();
     }
 
-    // ── Interacción ───────────────────────────────────────────────────────────
+    // ── Interaccion ───────────────────────────────────────────────────────────
     private void onRouteSelected() {
         Object sel = routeCombo.getSelectedItem();
         if (sel == null || sel.toString().startsWith("—")) {
@@ -463,9 +493,7 @@ public class VisualizationApp extends JFrame {
         }
     }
 
-    private void clearTable() {
-        tableModel.setRowCount(0);
-    }
+    private void clearTable() { tableModel.setRowCount(0); }
 
     private void updateStats() {
         if (filteredSpeeds.isEmpty()) return;
@@ -479,8 +507,8 @@ public class VisualizationApp extends JFrame {
             "<b style='color:#ffb400'>Ruta: %s</b><br>" +
             "Puntos GPS: %d<br>" +
             "Meses con datos: %d<br>" +
-            "Vel. máx: <b style='color:#ff6464'>%.1f km/h</b><br>" +
-            "Vel. mín: <b style='color:#64ff96'>%.1f km/h</b><br>" +
+            "Vel. max: <b style='color:#ff6464'>%.1f km/h</b><br>" +
+            "Vel. min: <b style='color:#64ff96'>%.1f km/h</b><br>" +
             "Vel. promedio: <b>%.1f km/h</b><br>" +
             "Segmentos totales: %d" +
             "</body></html>",
@@ -524,13 +552,10 @@ public class VisualizationApp extends JFrame {
 
             int w = getWidth(), h = getHeight();
 
-            // Fondo degradado
-            GradientPaint bg = new GradientPaint(0, 0, new Color(10, 15, 30),
-                                                  0, h, new Color(20, 30, 50));
+            GradientPaint bg = new GradientPaint(0, 0, new Color(10, 15, 30), 0, h, new Color(20, 30, 50));
             g2.setPaint(bg);
             g2.fillRect(0, 0, w, h);
 
-            // Grilla
             g2.setColor(COLOR_GRID);
             g2.setStroke(new BasicStroke(0.5f));
             for (int x = 0; x < w; x += 40) g2.drawLine(x, 0, x, h);
@@ -545,21 +570,18 @@ public class VisualizationApp extends JFrame {
                 return;
             }
 
-            // Dibujar línea de ruta
             g2.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             for (int i = 1; i < points.size(); i++) {
                 GpsRecord prev = points.get(i - 1);
                 GpsRecord curr = points.get(i);
                 int x1 = lonToX(prev.lon, w), y1 = latToY(prev.lat, h);
                 int x2 = lonToX(curr.lon, w), y2 = latToY(curr.lat, h);
-
                 float ratio = (float) i / points.size();
                 Color lineColor = blend(new Color(50, 100, 255), COLOR_ROUTE_LINE, ratio);
                 g2.setColor(lineColor);
                 g2.drawLine(x1, y1, x2, y2);
             }
 
-            // Dibujar puntos GPS
             for (int i = 0; i < points.size(); i++) {
                 GpsRecord p = points.get(i);
                 int x = lonToX(p.lon, w), y = latToY(p.lat, h);
@@ -571,13 +593,11 @@ public class VisualizationApp extends JFrame {
                 g2.drawOval(x - size/2, y - size/2, size, size);
             }
 
-            // Leyenda
             g2.setFont(new Font("Arial", Font.BOLD, 11));
-            drawLegendDot(g2, Color.GREEN,       10, h - 60, "Inicio");
-            drawLegendDot(g2, COLOR_MIO_RED,     10, h - 42, "Fin");
-            drawLegendDot(g2, COLOR_GPS_POINT,   10, h - 24, "Punto GPS (" + points.size() + ")");
+            drawLegendDot(g2, Color.GREEN,     10, h - 60, "Inicio");
+            drawLegendDot(g2, COLOR_MIO_RED,   10, h - 42, "Fin");
+            drawLegendDot(g2, COLOR_GPS_POINT, 10, h - 24, "Punto GPS (" + points.size() + ")");
 
-            // Nombre de ruta
             g2.setColor(COLOR_ACCENT);
             g2.setFont(new Font("Arial", Font.BOLD, 14));
             g2.drawString("Ruta: " + selectedRoute, 10, 25);
@@ -606,7 +626,7 @@ public class VisualizationApp extends JFrame {
         }
     }
 
-    // ── Panel del Gráfico de Velocidades ─────────────────────────────────────
+    // ── Panel del Grafico de Velocidades ─────────────────────────────────────
     class SpeedChartPanel extends JPanel {
         private List<SpeedRecord> data = new ArrayList<>();
 
@@ -627,7 +647,6 @@ public class VisualizationApp extends JFrame {
             int w = getWidth(), h = getHeight();
             int padL = 65, padR = 20, padT = 20, padB = 50;
 
-            // Fondo
             g2.setColor(new Color(15, 20, 35));
             g2.fillRect(0, 0, w, h);
 
@@ -645,7 +664,6 @@ public class VisualizationApp extends JFrame {
             int chartW = w - padL - padR;
             int chartH = h - padT - padB;
 
-            // Grilla horizontal
             g2.setStroke(new BasicStroke(0.5f));
             for (int i = 0; i <= 5; i++) {
                 int y = padT + chartH - (int)(chartH * i / 5.0);
@@ -656,13 +674,11 @@ public class VisualizationApp extends JFrame {
                 g2.drawString(String.format("%.0f", maxSpeed * i / 5), 5, y + 4);
             }
 
-            // Ejes
             g2.setColor(new Color(150, 150, 170));
             g2.setStroke(new BasicStroke(1.5f));
             g2.drawLine(padL, padT, padL, padT + chartH);
             g2.drawLine(padL, padT + chartH, padL + chartW, padT + chartH);
 
-            // Barras
             int barW = Math.max(10, chartW / data.size() - 8);
             DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MMM yy");
 
@@ -672,13 +688,11 @@ public class VisualizationApp extends JFrame {
                 int barH = (int)(chartH * r.avgSpeedKmh / maxSpeed);
                 int y = padT + chartH - barH;
 
-                // Color según velocidad
                 Color barColor;
                 if (r.avgSpeedKmh < 20)      barColor = COLOR_SPEED_LOW;
                 else if (r.avgSpeedKmh < 32) barColor = COLOR_SPEED_MED;
                 else                         barColor = COLOR_SPEED_HIGH;
 
-                // Gradiente en la barra
                 GradientPaint gp = new GradientPaint(x, y, barColor.brighter(), x, y + barH, barColor.darker());
                 g2.setPaint(gp);
                 g2.fillRoundRect(x, y, barW, barH, 4, 4);
@@ -687,21 +701,18 @@ public class VisualizationApp extends JFrame {
                 g2.setStroke(new BasicStroke(1f));
                 g2.drawRoundRect(x, y, barW, barH, 4, 4);
 
-                // Valor encima de la barra
                 g2.setColor(Color.WHITE);
                 g2.setFont(new Font("Arial", Font.BOLD, 10));
                 String val = String.format("%.1f", r.avgSpeedKmh);
                 FontMetrics fm = g2.getFontMetrics();
                 g2.drawString(val, x + (barW - fm.stringWidth(val)) / 2, y - 3);
 
-                // Label mes
                 g2.setColor(COLOR_TEXT_LIGHT);
                 g2.setFont(new Font("Arial", Font.PLAIN, 9));
                 String label = r.month.format(fmt);
                 g2.drawString(label, x + (barW - fm.stringWidth(label)) / 2 - 2, padT + chartH + 14);
             }
 
-            // Línea de promedio
             double avg = data.stream().mapToDouble(r -> r.avgSpeedKmh).average().orElse(0);
             int avgY = padT + chartH - (int)(chartH * avg / maxSpeed);
             g2.setColor(COLOR_ACCENT);
@@ -711,7 +722,6 @@ public class VisualizationApp extends JFrame {
             g2.setFont(new Font("Arial", Font.BOLD, 10));
             g2.drawString(String.format("Promedio: %.1f km/h", avg), padL + 4, avgY - 4);
 
-            // Título Y
             g2.setColor(new Color(150, 150, 170));
             g2.setFont(new Font("Arial", Font.PLAIN, 10));
             AffineTransform orig = g2.getTransform();
